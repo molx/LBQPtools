@@ -47,6 +47,19 @@ shinyUI(fluidPage(
                          '.fasta')),
       checkboxInput("cb_RemoveRedundancies", label = "Remove Redundancies",
                     value = TRUE),
+      checkboxInput("cb_RemoveReverses", label = "Remove Reverses",
+                    value = TRUE),
+      checkboxInput("cb_RemoveContaminants", label = "Remove Contaminants",
+                    value = TRUE),
+      fluidRow(
+        column(6,
+               checkboxInput("cb_RemoveTag", label = "Remove with tag:",
+                             value = TRUE)
+               ),
+        column(6,
+               textInput("tx_tagRemove", label = "Tag:")
+               )
+      ),
       downloadButton("bt_doMerge", label = "Merge Fasta files")
     ),
     # Show a plot of the generated distribution

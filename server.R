@@ -52,13 +52,41 @@ shinyServer(function(input, output) {
     content = function(file) {
       f1 <- seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
                                as.string = TRUE)
+      #f1 <- seqinr::read.fasta("WF1.fasta", seqtype = "AA",
+                               #as.string = TRUE)
       
       f2 <- seqinr::read.fasta(inFile2()$datapath, seqtype = input$seqtype,
                                as.string = TRUE)
+      #f2 <- seqinr::read.fasta("WF2.fasta", seqtype = "AA",
+                               #as.string = TRUE)
       
-      dups <- duplicated(c(as.character(f1), as.character(f2)))
+      headers <- clearHeader(seqinr::getAnnot(c(f1, f2)))
       
-      unqs <- c(f1, f2)[-dups]
+      dups <- if (input$cb_RemoveRedundancies) {
+        duplicated(c(as.character(f1), as.character(f2)))
+      } else {
+        FALSE
+      }
+      
+      revs <- if (input$cb_RemoveReverses) {
+        grepl("REVERSED", headers)
+      } else {
+        FALSE
+      }
+      
+      conts <- if (input$cb_RemoveContaminants) {
+        grepl("CONTAMINANT", headers)
+      } else {
+        FALSE
+      }
+      
+      tagsr <- if (input$cb_RemoveTag) {
+        grepl(input$tx_tagRemove, headers, fixed = TRUE)
+      } else {
+        FALSE
+      }
+      
+      unqs <- c(f1, f2)[!(dups | revs | conts | tagsr)]
       
       seqinr::write.fasta(sequences = unqs, 
                           names = clearHeader(seqinr::getAnnot(unqs)),
@@ -67,12 +95,11 @@ shinyServer(function(input, output) {
     }
   )
   
-  clearHeader <- function(x) {
-    gsub("^>", "", unlist(x))
-  }
-  
 })
 
+clearHeader <- function(x) {
+  gsub("^>", "", unlist(x))
+}
 
 #Adaptado de write.fasta do pacote seqinr
 write.oneseq <- function(pep, name, nbchar = 60) {
