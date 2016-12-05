@@ -8,8 +8,19 @@ shinyServer(function(input, output) {
   
   inFile2 <- reactive(input$file2)
   
-  output$preview <- renderUI({
+  output$nBefore <- renderUI({
     
+    if (is.null(inFile1()))
+      return(NULL) 
+    
+    sequences <- seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
+                                    as.string = FALSE)
+    
+    helpText(paste("Original:", length(sequences)))
+  })
+  
+  
+  preview <- eventReactive(input$bt_genPreview, {
     if (is.null(inFile1()))
       return(NULL)
     
@@ -22,7 +33,7 @@ shinyServer(function(input, output) {
     output$nBefore <- renderUI(helpText(paste("Original:", length(sequences))))
     
     sequences_filtered <- filter.fasta(sequences = sequences,
-                              minRes = input$minSeqFilter, maxRes = input$maxSeqFilter)
+                                       minRes = input$minSeqFilter, maxRes = input$maxSeqFilter)
     
     output$nAfter <- renderUI(helpText(paste("Filtered:", length(sequences_filtered))))
     
@@ -43,6 +54,14 @@ shinyServer(function(input, output) {
     } else {
       return("")
     }
+    
+  })
+  
+  
+  output$preview <- renderUI({
+    
+    preview()
+    
   })
   
   output$bt_doMerge <- downloadHandler(

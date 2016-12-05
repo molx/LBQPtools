@@ -60,7 +60,7 @@ shinyUI(
                                         value = FALSE)
                    ),
                    column(6,
-                          textInput("tx_tagRemove", label = "Tag:")
+                          textInput("tx_tagRemove", label = NA)
                    )
                  ),
                  downloadButton("bt_doMerge", label = "Merge Fasta files")
@@ -68,6 +68,7 @@ shinyUI(
                # Show a plot of the generated distribution
                mainPanel(
                  tags$h3("Output Preview"),
+                 actionButton("bt_genPreview", label = "Generate Preview"),
                  fluidRow(
                    column(6,
                           sliderInput(inputId =  "nPreview", label = "Number of sequences in preview", 
