@@ -57,7 +57,7 @@ shinyUI(
                  fluidRow(
                    column(6,
                           checkboxInput("cb_RemoveTag", label = "Remove with tag:",
-                                        value = TRUE)
+                                        value = FALSE)
                    ),
                    column(6,
                           textInput("tx_tagRemove", label = "Tag:")

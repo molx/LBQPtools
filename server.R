@@ -80,7 +80,7 @@ shinyServer(function(input, output) {
         FALSE
       }
       
-      tagsr <- if (input$cb_RemoveTag) {
+      tagsr <- if (input$cb_RemoveTag && (input$tx_tagRemove != "")) {
         grepl(input$tx_tagRemove, headers, fixed = TRUE)
       } else {
         FALSE
