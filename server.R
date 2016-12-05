@@ -3,47 +3,47 @@ library(shiny)
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
-   
+  
   inFile1 <- reactive(input$file1)
   
   inFile2 <- reactive(input$file2)
   
-# output$preview <- renderUI({
-#     
-#     if (is.null(inFile1()))
-#       return(NULL)
-#     
-#     #fastaFile <- read.fasta("../proteins grandiflora.fasta")
-#     fastaFile <- inFile1()
-#     
-#     output$nBefore <- renderUI(helpText(paste("Original:", length(fastaFile))))
-#     
-#     sequences <- seqinr::read.fasta(fastaFile$datapath, seqtype = input$seqtype,
-#                             as.string = FALSE)
-#     
-#     sequences <- filter.fasta(sequences, 
-#                               minRes = input$minSeqFilter, maxRes = input$maxSeqFilter)
-#     
-#     output$nAfter <- renderUI(helpText(paste("Filtered:", length(sequences))))
-#     
-#     if (length(sequences) != 0) {
-#       sequences <- sequences[1:(min(length(sequences), input$nPreview))]
-#       
-#       header <- unlist(getAnnot(sequences))
-#       
-#       if (!is.list(sequences)) {
-#         HTML(write.oneseq(pep = sequences, name = header, nbchar = input$nbcharPreview))
-#       } else {
-#         n.seq <- length(sequences)
-#         HTML(paste0(sapply(seq_len(n.seq), function(x) {
-#           write.oneseq(pep = as.character(sequences[[x]]), 
-#                        name = header[x], nbchar = input$nbcharPreview)
-#         }), collapse = "<br>"))
-#       }
-#     } else {
-#       return("") 
-#     }
-#   })
+  output$preview <- renderUI({
+    
+    if (is.null(inFile1()))
+      return(NULL)
+    
+    #fastaFile <- read.fasta("../proteins grandiflora.fasta")
+    fastaFile <- inFile1()
+    
+    sequences <- seqinr::read.fasta(fastaFile$datapath, seqtype = input$seqtype,
+                                    as.string = FALSE)
+    
+    output$nBefore <- renderUI(helpText(paste("Original:", length(sequences))))
+    
+    sequences_filtered <- filter.fasta(sequences = sequences,
+                              minRes = input$minSeqFilter, maxRes = input$maxSeqFilter)
+    
+    output$nAfter <- renderUI(helpText(paste("Filtered:", length(sequences_filtered))))
+    
+    if (length(sequences_filtered) != 0) {
+      sequences_preview <- sequences_filtered[1:(min(length(sequences_filtered), input$nPreview))]
+      
+      header <- unlist(seqinr::getAnnot(sequences_preview))
+      
+      if (!is.list(sequences_preview)) {
+        HTML(write.oneseq(pep = sequences_preview, name = header, nbchar = input$nbcharPreview))
+      } else {
+        n.seq <- length(sequences_preview)
+        HTML(paste0(sapply(seq_len(n.seq), function(x) {
+          write.oneseq(pep = as.character(sequences_preview[[x]]),
+                       name = header[x], nbchar = input$nbcharPreview)
+        }), collapse = "<br>"))
+      }
+    } else {
+      return("")
+    }
+  })
   
   output$bt_doMerge <- downloadHandler(
     filename = function() {
@@ -53,12 +53,12 @@ shinyServer(function(input, output) {
       f1 <- seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
                                as.string = TRUE)
       #f1 <- seqinr::read.fasta("WF1.fasta", seqtype = "AA",
-                               #as.string = TRUE)
+      #as.string = TRUE)
       
       f2 <- seqinr::read.fasta(inFile2()$datapath, seqtype = input$seqtype,
                                as.string = TRUE)
       #f2 <- seqinr::read.fasta("WF2.fasta", seqtype = "AA",
-                               #as.string = TRUE)
+      #as.string = TRUE)
       
       headers <- clearHeader(seqinr::getAnnot(c(f1, f2)))
       
@@ -120,12 +120,11 @@ write.oneseq <- function(pep, name, nbchar = 60) {
 }
 
 filter.fasta <- function(sequences, minRes, maxRes) {
-  nRes <- sapply(fastaFile, length)
-  filtered <- sequences
-  minResTF <- if(minRes > 0) {
+  nRes <- sapply(sequences, length)
+  minResTF <- if(!is.na(minRes) && minRes > 0) {
     nRes >= minRes
   } else TRUE
-  maxResTF <- if(maxRes > 0) {
+  maxResTF <- if(!is.na(maxRes) && maxRes > 0) {
     nRes <= maxRes
   } else TRUE
   filtered <- sequences[minResTF & maxResTF]
