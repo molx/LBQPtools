@@ -85,6 +85,6 @@ shinyUI(
              )
     ),
     tabPanel("GO Tools"),
-    tabPanel("iTraq Ratio Check"),
+    tabPanel(HTML("iTraq Ratio Check</a></li><li><a href='http://lbqp.unb.br/NetWheels/' target = '_blank'>NetWheels")),
     tabPanel("About")
   ))
