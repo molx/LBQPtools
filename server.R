@@ -114,6 +114,28 @@ shinyServer(function(input, output) {
     }
   )
   
+  output$bt_doFilter <- downloadHandler(
+    filename = function () {
+      "FilteredFasta.fasta"
+    },
+    content = function(file) {
+      fastaIn <- seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
+                               as.string = TRUE)
+      
+      # fastaIn <- seqinr::read.fasta("2seqFasta.fasta", seqtype = "AA",
+      #                               as.string = TRUE)
+      
+      out <- filter.fasta(sequences = fastaIn,
+                          headers = input$fileHeaderFilter,
+                          minRes = input$minSeqFilter, maxRes = input$maxSeqFilter)
+      
+      seqinr::write.fasta(sequences = out, 
+                          names = clearHeader(seqinr::getAnnot(out)),
+                          file.out = file,
+                          as.string = TRUE)
+    }
+  )
+  
 })
 
 clearHeader <- function(x) {
@@ -138,15 +160,19 @@ write.oneseq <- function(pep, name, nbchar = 60) {
   paste0(start, aas)
 }
 
-filter.fasta <- function(sequences, minRes, maxRes) {
-  nRes <- sapply(sequences, length)
+filter.fasta <- function(sequences, headers, minRes, maxRes) {
+  nRes <- sapply(sequences, nchar)
   minResTF <- if(!is.na(minRes) && minRes > 0) {
     nRes >= minRes
   } else TRUE
   maxResTF <- if(!is.na(maxRes) && maxRes > 0) {
     nRes <= maxRes
   } else TRUE
-  filtered <- sequences[minResTF & maxResTF]
+  headersTF <- if(!is.null(headers)) {
+    headersText <- readLines(headers$datapath)
+    names(f1) %in% headersText
+  } else TRUE
+  filtered <- sequences[minResTF & maxResTF & headersTF]
   return(filtered)
 }
 
