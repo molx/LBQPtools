@@ -3,22 +3,6 @@ library(shinyjs)
 
 subtitlesStyle <- "font-weight: bold; color: #000000;"
 
-numericInput2 <- function(inputId, label, value, min = NA, max = NA, step = NA, 
-                          width = NULL) {
-  value <- restoreInput(id = inputId, default = value)
-  inputTag <- tags$input(id = inputId, type = "number", class = "form-control", 
-                         value = formatNoSci(value))
-  if (!is.na(min)) 
-    inputTag$attribs$min = min
-  if (!is.na(max)) 
-    inputTag$attribs$max = max
-  if (!is.na(step)) 
-    inputTag$attribs$step = step
-  div(class = "form-group shiny-input-container", style = if (!is.null(width)) 
-    paste0("width: ", validateCssUnit(width), ";"), label %AND% 
-      tags$label(label, `for` = inputId), inputTag)
-}
-
 # Define UI for application that draws a histogram
 shinyUI(
   tagList(useShinyjs(),
@@ -30,7 +14,7 @@ shinyUI(
                               titlePanel("Fasta Tools"),
                               sidebarLayout(
                                 sidebarPanel(
-                                  fileInput('file1', 'Choose FASTA file',
+                                  fileInput('file_Fasta1', 'Choose FASTA file',
                                             accept=c('FASTA', 
                                                      '.fasta')),
                                   selectInput("seqtype", "Type of sequence", 
@@ -59,17 +43,17 @@ shinyUI(
                                     ),
                                     tabPanel("Merge",
                                              tags$br(),
-                                             fileInput('file2', 'Choose FASTA file #2',
+                                             fileInput('file_Fasta2', 'Choose FASTA file #2',
                                                        accept=c('FASTA', 
                                                                 '.fasta')),
-                                             checkboxInput("cb_RemoveRedundancies", label = "Remove Redundancies",
+                                             checkboxInput("cb_rmFastaDups", label = "Remove Redundancies",
                                                            value = TRUE),
-                                             checkboxInput("cb_RemoveReverses", label = "Remove Reverses",
+                                             checkboxInput("cb_rmFastaRevs", label = "Remove Reverses",
                                                            value = TRUE),
-                                             checkboxInput("cb_RemoveContaminants", label = "Remove Contaminants",
+                                             checkboxInput("cb_rmFastaConts", label = "Remove Contaminants",
                                                            value = TRUE),
                                              div(style="display:inline-block;width:150px;",
-                                                 checkboxInput("cb_RemoveTag", label = "Remove with tag:",
+                                                 checkboxInput("cb_rmFastaTag", label = "Remove with tag:",
                                                                value = FALSE)),
                                              div(style="display:inline-block;",
                                                  tags$input(id = "tx_tagRemove", class="input-small")),
@@ -94,7 +78,33 @@ shinyUI(
                                 )
                               )
                      ),
-                     tabPanel("GO Tools"),
+                     tabPanel("GO Tools",
+                              titlePanel("GO Tools"),
+                              sidebarLayout(
+                                sidebarPanel(
+                                  fileInput('file_b2gTable', 'Choose Blast2GO table file',
+                                            accept=c('Text file', 
+                                                     '.txt')),
+                                  uiOutput("hp_NumGOLines"),
+                                  helpText("File should be a .txt tab-delimited table, with GO IDs on a column named 'GO IDs list'")
+                                ),
+                                mainPanel(
+                                  tabsetPanel(
+                                    tabPanel("Extract IDs from table",
+                                             checkboxInput("cb_rmGOcat", "Remove Category from GO IDs ('C:', 'F:' or 'P:')", 
+                                                           value = TRUE, width = "500"),
+                                             checkboxInput("cb_rmGOdups", "Remove Redundancies", 
+                                                           value = FALSE, width = "500"),
+                                             downloadButton("bt_extractGO_all", "Extract All GO IDs"), tags$br(), tags$br(),
+                                             downloadButton("bt_extractGO_C", "Extract Cellular Component IDs"), tags$br(), tags$br(),
+                                             downloadButton("bt_extractGO_F", "Extract Molecular Function IDs"), tags$br(), tags$br(),
+                                             downloadButton("bt_extractGO_P", "Extract Biological Process IDs")
+                                             ),
+                                    tabPanel("GO Statistics",
+                                             plotOutput("plot_GOpie"))
+                                  )
+                                )
+                              )),
                      tabPanel(HTML("iTraq Ratio Check</a></li><li><a href='http://lbqp.unb.br/NetWheels/' target = '_blank'>NetWheels")),
                      tabPanel("About")
           )
