@@ -8,60 +8,17 @@ shinyServer(function(input, output) {
   
   inFile2 <- reactive(input$file2)
   
-  output$nBefore <- renderUI({
-    
-    if (is.null(inFile1()))
-      return(NULL) 
-    
-    sequences <- seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
-                                    as.string = FALSE)
-    
-    helpText(paste("Original:", length(sequences)))
-  })
+  Fasta1 <- reactive(seqinr::read.fasta(input$file1$datapath, seqtype = input$seqtype,
+                                        as.string = TRUE))
   
-  
-  preview <- eventReactive(input$bt_genPreview, {
-    if (is.null(inFile1()))
-      return(NULL)
+  output$hp_NumOfSeq <- renderUI({
     
-    #fastaFile <- read.fasta("../proteins grandiflora.fasta")
-    fastaFile <- inFile1()
-    
-    sequences <- seqinr::read.fasta(fastaFile$datapath, seqtype = input$seqtype,
-                                    as.string = FALSE)
-    
-    output$nBefore <- renderUI(helpText(paste("Original:", length(sequences))))
-    
-    sequences_filtered <- filter.fasta(sequences = sequences,
-                                       minRes = input$minSeqFilter, maxRes = input$maxSeqFilter)
-    
-    output$nAfter <- renderUI(helpText(paste("Filtered:", length(sequences_filtered))))
-    
-    if (length(sequences_filtered) != 0) {
-      sequences_preview <- sequences_filtered[1:(min(length(sequences_filtered), input$nPreview))]
-      
-      header <- unlist(seqinr::getAnnot(sequences_preview))
-      
-      if (!is.list(sequences_preview)) {
-        HTML(write.oneseq(pep = sequences_preview, name = header, nbchar = input$nbcharPreview))
-      } else {
-        n.seq <- length(sequences_preview)
-        HTML(paste0(sapply(seq_len(n.seq), function(x) {
-          write.oneseq(pep = as.character(sequences_preview[[x]]),
-                       name = header[x], nbchar = input$nbcharPreview)
-        }), collapse = "<br>"))
-      }
+    if (is.null(inFile1())) {
+      helpText("Number of sequences:", style = "font-weight: bold; color: #000000;")
     } else {
-      return("")
+      sequences <- Fasta1()
+      helpText(paste("Number of sequences:", length(sequences)), style = "font-weight: bold; color: #000000;")
     }
-    
-  })
-  
-  
-  output$preview <- renderUI({
-    
-    preview()
-    
   })
   
   output$bt_doMerge <- downloadHandler(
@@ -69,8 +26,8 @@ shinyServer(function(input, output) {
       "MergedFasta.fasta"
     },
     content = function(file) {
-      f1 <- seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
-                               as.string = TRUE)
+      f1 <- Fasta1() #seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
+                     #             as.string = TRUE)
       #f1 <- seqinr::read.fasta("WF1.fasta", seqtype = "AA",
       #as.string = TRUE)
       
@@ -136,6 +93,10 @@ shinyServer(function(input, output) {
     }
   )
   
+  observeEvent(input$bt_resetHeaderList, {
+    reset("fileHeaderFilter")
+  })
+  
 })
 
 clearHeader <- function(x) {
@@ -170,7 +131,7 @@ filter.fasta <- function(sequences, headers, minRes, maxRes) {
   } else TRUE
   headersTF <- if(!is.null(headers)) {
     headersText <- readLines(headers$datapath)
-    names(f1) %in% headersText
+    names(sequences) %in% headersText
   } else TRUE
   filtered <- sequences[minResTF & maxResTF & headersTF]
   return(filtered)
