@@ -102,8 +102,15 @@ shinyServer(function(input, output) {
   
   ##### GO TOOLS #####
   
-  b2gTable <- reactive(readr::read_delim(input$file_b2gTable$datapath, delim = "\t", 
-                                  escape_double = FALSE, trim_ws = TRUE))
+  b2gTable <- reactive(switch(input$cb_GOfileType,
+                              tsv = readr::read_tsv(input$file_b2gTable$datapath),
+                              csv1 = readr::read_csv(input$file_b2gTable$datapath),
+                              csv2 = readr::read_csv2(input$file_b2gTable$datapath)))
+  
+  b2gTableRef <- reactive(switch(input$cb_GOfileTypeRef,
+                              tsv = readr::read_tsv(input$file_b2gTableRef$datapath),
+                              csv1 = readr::read_csv(input$file_b2gTableRef$datapath),
+                              csv2 = readr::read_csv2(input$file_b2gTableRef$datapath)))
   
   output$hp_NumGOLines <- renderUI({
     if (is.null(input$file_b2gTable)) {
@@ -119,9 +126,10 @@ shinyServer(function(input, output) {
       "GO_all_list.txt"
     },
     content = function(file) {
-      out <- extract.go(GOvec = b2gTable()$`GO IDs list`,
+      out <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
                         type = "all", removeCat = input$cb_rmGOcat,
-                        removeDups = input$cb_rmGOdups)$vec
+                        removeDups = input$cb_rmGOdups,
+                        GOsep = input$tx_GOsep)$vec
       
       writeLines(out, con = file)
     })
@@ -131,9 +139,10 @@ shinyServer(function(input, output) {
       "GO_C_list.txt"
     },
     content = function(file) {
-      out <- extract.go(GOvec = b2gTable()$`GO IDs list`,
+      out <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
                         type = "C", removeCat = input$cb_rmGOcat,
-                        removeDups = input$cb_rmGOdups)$vec
+                        removeDups = input$cb_rmGOdups,
+                        GOsep = input$tx_GOsep)$vec
       
       writeLines(out, con = file)
     })
@@ -143,9 +152,10 @@ shinyServer(function(input, output) {
       "GO_F_list.txt"
     },
     content = function(file) {
-      out <- extract.go(GOvec = b2gTable()$`GO IDs list`,
+      out <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
                         type = "F", removeCat = input$cb_rmGOcat,
-                        removeDups = input$cb_rmGOdups)$vec
+                        removeDups = input$cb_rmGOdups,
+                        GOsep = input$tx_GOsep)$vec
       
       writeLines(out, con = file)
     })
@@ -155,20 +165,87 @@ shinyServer(function(input, output) {
       "GO_P_list.txt"
     },
     content = function(file) {
-      out <- extract.go(GOvec = b2gTable()$`GO IDs list`,
+      out <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
                         type = "P", removeCat = input$cb_rmGOcat,
-                        removeDups = input$cb_rmGOdups)$vec
+                        removeDups = input$cb_rmGOdups,
+                        GOsep = input$tx_GOsep)$vec
       
       writeLines(out, con = file)
     })
   
+  
+  FisherOut <- eventReactive(input$bt_GOFischer, {
+    GOvec <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
+                                type = "all", removeCat = FALSE,
+                                removeDups = FALSE,
+                                GOsep = input$tx_GOsep)$vec
+      
+    GOvecRef <- extract.go(GOvec = b2gTable()[[input$tx_GOcolRef]],
+                           type = "all", removeCat = FALSE,
+                           removeDups = FALSE,
+                           GOsep = input$tx_GOsep)$vec
+    
+    GOvec <- GOvec[GOvec %in% unique(GOvecRef)]
+    
+    Fisher <- lapply(seq_along(unique(GOvec)), function(GO) {
+      target <- GOvec[GO][1]
+      
+      target_exp <- sum(GOvec == target)
+      target_ref <- sum(GOvecRef == target)
+      
+      rest_exp <- length(GOvec) - target_exp
+      rest_ref <- length(GOvecRef) - target_ref
+      
+      mat <- matrix(c(target_exp, target_ref, rest_exp, rest_ref), ncol = 2)
+      
+      f <- fisher.test(mat, alternative = "greater")
+      
+      data.frame(ID = target, p.value = f$p.value)
+    })
+    
+    do.call(rbind, Fisher)
+  })
+  
+  
+  output$tb_GOstat <- DT::renderDataTable(FisherOut(),
+                                          rownames= FALSE,
+                                          options = list(
+                                            autoWidth = TRUE,
+                                            columnDefs = list(list(width = '50%', targets = "_all"))))
+  
+  output$bt_writeGOstat <-  downloadHandler(
+    filename = function() {
+      "GO_Enrichment_Test.csv"
+    },
+    content = function(file) {
+      if (input$cb_GOfileType == "csv1") {
+        write.csv(x = FisherOut(), file = file, row.names = FALSE)
+      } else {
+        write.csv2(x = FisherOut(), file = file, row.names = FALSE)
+      }
+    })
+  
   output$plot_GOpie <- renderPlot({
-    cats <- extract.go(GOvec = b2gTable()$`GO IDs list`,
+    print(input$file_b2gTable)
+    if (!is.null(input$file_b2gTable)) {
+      cats <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
                                type = "all", removeCat = input$cb_rmGOcat,
-                               removeDups = input$cb_rmGOdups)$cats
+                               removeDups = input$cb_rmGOdups,
+                       GOsep = input$tx_GOsep)$cats
     
     pie(table(cats))
+    } else {
+      NULL
+    }
   })
+  
+  
+  
+  
+  
+  
+  
+  
   ##### iTraq Ratio Check #####
   
 })
@@ -212,8 +289,9 @@ filter.fasta <- function(sequences, headers, minRes, maxRes) {
 }
 
 extract.go <- function(GOvec, type = c("all", "C", "F", "P"),
-                       removeCat = TRUE, removeDups = FALSE) {
-  vec <- unlist(strsplit(na.omit(GOvec), split = "; "))
+                       removeCat = TRUE, removeDups = FALSE,
+                       GOsep) {
+  vec <- unlist(strsplit(na.omit(GOvec), split = GOsep))
   
   if (removeDups) {
     vec <- unique(vec)

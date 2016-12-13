@@ -82,11 +82,24 @@ shinyUI(
                               titlePanel("GO Tools"),
                               sidebarLayout(
                                 sidebarPanel(
-                                  fileInput('file_b2gTable', 'Choose Blast2GO table file',
-                                            accept=c('Text file', 
-                                                     '.txt')),
+                                  fileInput("file_b2gTable", "Choose GO IDs file",
+                                            accept=c(".csv", ".tsv", ".txt")),
+                                  selectInput("cb_GOfileType", "File type", 
+                                              choices = c(`Comma separated values (US .csv)` = "csv1",
+                                                          `Semicolon separated values (BR .csv)` = "csv2",
+                                                          `Tab separated values` = "tsv"),
+                                              selected = "tsv"),
+                                  fluidRow(
+                                    column(6,
+                                           textInput("tx_GOcol", label = "GO IDs column name", value = "GO IDs list")
+                                           ),
+                                    column(6,
+                                           textInput("tx_GOsep", label = "GO IDs separator", value = "; ")
+                                    )
+                                  ),
                                   uiOutput("hp_NumGOLines"),
-                                  helpText("File should be a .txt tab-delimited table, with GO IDs on a column named 'GO IDs list'")
+                                  helpText(""),
+                                  helpText("For example, one cell of the column could be 'P:GO:0051297; C:GO:0031252; C:GO:0036064; P:GO:0035020'")
                                 ),
                                 mainPanel(
                                   tabsetPanel(
@@ -101,7 +114,43 @@ shinyUI(
                                              downloadButton("bt_extractGO_P", "Extract Biological Process IDs")
                                              ),
                                     tabPanel("GO Statistics",
-                                             plotOutput("plot_GOpie"))
+                                             fileInput("file_b2gTableRef", "Choose reference GO IDs file",
+                                                       accept=c(".csv", ".tsv", ".txt")),
+                                             fluidRow(
+                                               column(4,
+                                                      selectInput("cb_GOfileTypeRef", "File type", 
+                                                                  choices = c(`Comma separated values (US .csv)` = "csv1",
+                                                                              `Semicolon separated values (BR .csv)` = "csv2",
+                                                                              `Tab separated values` = "tsv"),
+                                                                  selected = "tsv")),
+                                               column(4,
+                                                      textInput("tx_GOcolRef", label = "GO IDs column name", value = "GO IDs list")
+                                               ),
+                                               column(4,
+                                                      textInput("tx_GOsepRef", label = "GO IDs separator", value = "; ")
+                                               )
+                                             ),
+                                             fluidRow(
+                                               column(2,
+                                                      actionButton("bt_GOFischer" ,"Run Fischer's Exact Test")
+                                                      ),
+                                               column(10,
+                                                      helpText("(Wait until the table appears below to continue)"))
+                                             ),
+                                             tags$br(),
+                                             fluidRow(
+                                               column(2,
+                                                      downloadButton("bt_writeGOstat", "Download Results"),
+                                                      tags$br(),
+                                                      selectInput("cb_GOstatFormat", "Output format",
+                                                                  choices = c(`csv (US)`= "csv1",
+                                                                              `csv (BR)`= "csv2"))),
+                                               column(5,
+                                                      DT::dataTableOutput("tb_GOstat"))
+                                                      ),
+                                               column(5)
+                                             )
+                                             #plotOutput("plot_GOpie"))
                                   )
                                 )
                               )),
