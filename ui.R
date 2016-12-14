@@ -6,6 +6,15 @@ subtitlesStyle <- "font-weight: bold; color: #000000;"
 # Define UI for application that draws a histogram
 shinyUI(
   tagList(useShinyjs(),
+          tags$head(
+            tags$style((HTML("
+                              #shiny-notification-panel {
+                                  position: fixed;
+                                  bottom: 50%;
+                                  right: 50%;
+                              }"
+            )))
+          ),
           navbarPage("LBQP Tools",
                      tabPanel("Fasta Tools",
                               tags$head(tags$style("#preview{font-family: monospace;}"
@@ -92,7 +101,7 @@ shinyUI(
                                   fluidRow(
                                     column(6,
                                            textInput("tx_GOcol", label = "GO IDs column name", value = "GO IDs list")
-                                           ),
+                                    ),
                                     column(6,
                                            textInput("tx_GOsep", label = "GO IDs separator", value = "; ")
                                     )
@@ -103,6 +112,21 @@ shinyUI(
                                 ),
                                 mainPanel(
                                   tabsetPanel(
+                                    tabPanel("Descriptive Stastitics",
+                                             tags$br(),
+                                             actionButton("bt_GOdesc", "Load file"),
+                                             fluidRow(
+                                               column(4,
+                                                      plotOutput("plot_GOpie")
+                                               ),
+                                               column(3,
+                                                      tableOutput("df_GOcounts")
+                                               ),
+                                               column(5,
+                                                      DT::dataTableOutput("dt_GOall")
+                                               )
+                                             )
+                                    ),
                                     tabPanel("Extract IDs from table",
                                              checkboxInput("cb_rmGOcat", "Remove Category from GO IDs ('C:', 'F:' or 'P:')", 
                                                            value = TRUE, width = "500"),
@@ -112,8 +136,8 @@ shinyUI(
                                              downloadButton("bt_extractGO_C", "Extract Cellular Component IDs"), tags$br(), tags$br(),
                                              downloadButton("bt_extractGO_F", "Extract Molecular Function IDs"), tags$br(), tags$br(),
                                              downloadButton("bt_extractGO_P", "Extract Biological Process IDs")
-                                             ),
-                                    tabPanel("GO Statistics",
+                                    ),
+                                    tabPanel("Enrichment test",
                                              fileInput("file_b2gTableRef", "Choose reference GO IDs file",
                                                        accept=c(".csv", ".tsv", ".txt")),
                                              fluidRow(
@@ -132,8 +156,8 @@ shinyUI(
                                              ),
                                              fluidRow(
                                                column(2,
-                                                      actionButton("bt_GOFischer" ,"Run Fischer's Exact Test")
-                                                      ),
+                                                      actionButton("bt_GOFisher" ,"Run Fisher's Exact Test")
+                                               ),
                                                column(10,
                                                       helpText("(Wait until the table appears below to continue)"))
                                              ),
@@ -147,10 +171,9 @@ shinyUI(
                                                                               `csv (BR)`= "csv2"))),
                                                column(5,
                                                       DT::dataTableOutput("tb_GOstat"))
-                                                      ),
-                                               column(5)
-                                             )
-                                             #plotOutput("plot_GOpie"))
+                                             ),
+                                             column(5)
+                                    )
                                   )
                                 )
                               )),

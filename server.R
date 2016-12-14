@@ -107,6 +107,69 @@ shinyServer(function(input, output) {
                               csv1 = readr::read_csv(input$file_b2gTable$datapath),
                               csv2 = readr::read_csv2(input$file_b2gTable$datapath)))
   
+  
+  ### Descriptive 
+  
+  observeEvent(input$bt_GOdesc, {
+    
+    if (!is.null(input$file_b2gTable)) {
+      GOvec <- b2gTable()[[input$tx_GOcol]]
+      
+      extracted <- extract.go(GOvec = GOvec,
+                              type = "all", removeCat = FALSE,
+                              removeDups = FALSE,
+                              GOsep = input$tx_GOsep)
+      
+      cats <- extracted$cats 
+      vec <- extracted$vec
+      
+      
+      cats_names <- c(F = "Molecular\nFunction", P = "Biological\nProcess", C = "Cellular\nComponent")
+      tab_cats <- table(cats)
+      tab_ids <- table(vec)
+      
+      vec_C <- vec[cats == "C"]
+      vec_F <- vec[cats == "F"]
+      vec_P <- vec[cats == "P"]
+      
+      output$plot_GOpie <- renderPlot({
+        par(mar=c(4,3,2,1))
+        bp <- barplot(tab_cats, names.arg = cats_names[names(tab_cats)],
+                      col = "lightblue", xlab = "Category", ylab = "Counts")
+        text(x = bp, y = tab_cats, adj = c(0.5, 1), labels = tab_cats)
+      })
+      
+      counts_table <- data.frame(Type = c("Cellular component", "Molecular function", 
+                                          "Biological process", "All"),
+                                 Total = c(tab_cats["C"], tab_cats["F"], 
+                                           tab_cats["P"], length(vec)),
+                                 Unique = c(length(unique(vec_C)), length(unique(vec_F)),
+                                            length(unique(vec_P)), length(unique(vec))))
+      
+      output$df_GOcounts <- renderTable(counts_table)
+      
+      GO_counted <- as.data.frame(tab_ids)
+      colnames(GO_counted) <- c("ID", "Counts")
+      GO_counted$Category <- cats_names[gsub(":GO:\\d{7}", "", GO_counted$ID)]
+      GO_counted <- GO_counted[order(GO_counted$Counts, GO_counted$ID, decreasing = TRUE),]
+      
+      output$dt_GOall <- DT::renderDataTable(GO_counted, 
+                                             rownames = FALSE,
+                                             class = "compact",
+                                             options = list(
+                                               autoWidth = TRUE,
+                                               columnDefs = list(list(width = "80%", targets = 2),
+                                                                 list(className = 'dt-center', targets = "_all"))))
+      
+    } else {
+      NULL
+    }
+
+  })
+  
+  
+  #### Extract IDs
+  
   b2gTableRef <- reactive(switch(input$cb_GOfileTypeRef,
                               tsv = readr::read_tsv(input$file_b2gTableRef$datapath),
                               csv1 = readr::read_csv(input$file_b2gTableRef$datapath),
@@ -174,7 +237,9 @@ shinyServer(function(input, output) {
     })
   
   
-  FisherOut <- eventReactive(input$bt_GOFischer, {
+  #### Enrichment
+  
+  FisherOut <- eventReactive(input$bt_GOFisher, {
     GOvec <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
                                 type = "all", removeCat = FALSE,
                                 removeDups = FALSE,
@@ -187,25 +252,42 @@ shinyServer(function(input, output) {
     
     GOvec <- GOvec[GOvec %in% unique(GOvecRef)]
     
-    Fisher <- lapply(seq_along(unique(GOvec)), function(GO) {
-      target <- GOvec[GO][1]
-      
-      target_exp <- sum(GOvec == target)
-      target_ref <- sum(GOvecRef == target)
-      
-      rest_exp <- length(GOvec) - target_exp
-      rest_ref <- length(GOvecRef) - target_ref
-      
-      mat <- matrix(c(target_exp, target_ref, rest_exp, rest_ref), ncol = 2)
-      
-      f <- fisher.test(mat, alternative = "greater")
-      
-      data.frame(ID = target, p.value = f$p.value)
-    })
+    # progress <- shiny::Progress$new()
+    
+    # on.exit(progress$close())
+    # https://shiny.rstudio.com/articles/progress.html
+    # progress$set(message = "Performing tests", value = 0)
+    
+    nGOs <- length(unique(GOvec))
+    
+    prog.interval <- seq(0, nGOs, length.out = 100)
+    
+    withProgress(message = "Performing tests", value = 0,
+                 {
+                   Fisher <- lapply(seq_along(unique(GOvec)), function(GO) {
+                     target <- GOvec[GO][1]
+                     
+                     target_exp <- sum(GOvec == target)
+                     target_ref <- sum(GOvecRef == target)
+                     
+                     rest_exp <- length(GOvec) - target_exp
+                     rest_ref <- length(GOvecRef) - target_ref
+                     
+                     mat <- matrix(c(target_exp, target_ref, rest_exp, rest_ref), ncol = 2)
+                     
+                     f <- fisher.test(mat, alternative = "greater")
+                     
+                     setProgress(findInterval(GO, prog.interval)/100,
+                                 detail = paste(GO, "out of", nGOs))
+                     #incProgress(1/nGOs, detail = paste(GO, "out of", nGOs))
+                     
+                     data.frame(ID = target, p.value = f$p.value)
+                   })
+                 })
     
     do.call(rbind, Fisher)
+    
   })
-  
   
   output$tb_GOstat <- DT::renderDataTable(FisherOut(),
                                           rownames= FALSE,
@@ -224,27 +306,6 @@ shinyServer(function(input, output) {
         write.csv2(x = FisherOut(), file = file, row.names = FALSE)
       }
     })
-  
-  output$plot_GOpie <- renderPlot({
-    print(input$file_b2gTable)
-    if (!is.null(input$file_b2gTable)) {
-      cats <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
-                               type = "all", removeCat = input$cb_rmGOcat,
-                               removeDups = input$cb_rmGOdups,
-                       GOsep = input$tx_GOsep)$cats
-    
-    pie(table(cats))
-    } else {
-      NULL
-    }
-  })
-  
-  
-  
-  
-  
-  
-  
   
   ##### iTraq Ratio Check #####
   
