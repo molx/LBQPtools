@@ -12,6 +12,11 @@ shinyUI(
                                   position: fixed;
                                   bottom: 50%;
                                   right: 50%;
+                              }
+                              #progress-text {
+                                  position: fixed;
+                                  top: 50%;
+                                  right: 50%;
                               }"
             )))
           ),
