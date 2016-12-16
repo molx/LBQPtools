@@ -96,19 +96,22 @@ shinyUI(
                               titlePanel("GO Tools"),
                               sidebarLayout(
                                 sidebarPanel(
-                                  fileInput("file_b2gTable", "Choose GO IDs file",
-                                            accept=c(".csv", ".tsv", ".txt")),
                                   selectInput("cb_GOfileType", "File type", 
-                                              choices = c(`Comma separated values (US .csv)` = "csv1",
+                                              choices = c(`Select one` = "wait",
+                                                          `Comma separated values (US .csv)` = "csv1",
                                                           `Semicolon separated values (BR .csv)` = "csv2",
                                                           `Tab separated values` = "tsv"),
-                                              selected = "tsv"),
+                                              selected = "wait"),
+                                  fileInput("file_b2gTable", "Choose GO IDs file",
+                                            accept=c(".csv", ".tsv", ".txt")),
                                   fluidRow(
                                     column(6,
-                                           textInput("tx_GOcol", label = "GO IDs column name", value = "GO IDs list")
+                                           selectInput("cb_GOcol", label= "GO IDs column name", 
+                                                       choices = c(`Load file first` = "wait"), 
+                                                       selected = "wait")
                                     ),
                                     column(6,
-                                           textInput("tx_GOsep", label = "GO IDs separator", value = "; ")
+                                           textInput("tx_GOsep", label = "GO IDs separator", value = "")
                                     )
                                   ),
                                   uiOutput("hp_NumGOLines"),
@@ -120,6 +123,7 @@ shinyUI(
                                     tabPanel("Descriptive Stastitics",
                                              tags$br(),
                                              actionButton("bt_GOdesc", "Load file"),
+                                             helpText("This function is currently only useful for GO IDs which have the category indicator at the beginning."),
                                              fluidRow(
                                                column(4,
                                                       plotOutput("plot_GOpie")
@@ -143,21 +147,32 @@ shinyUI(
                                              downloadButton("bt_extractGO_P", "Extract Biological Process IDs")
                                     ),
                                     tabPanel("Enrichment test",
-                                             fileInput("file_b2gTableRef", "Choose reference GO IDs file",
-                                                       accept=c(".csv", ".tsv", ".txt")),
                                              fluidRow(
                                                column(4,
                                                       selectInput("cb_GOfileTypeRef", "File type", 
-                                                                  choices = c(`Comma separated values (US .csv)` = "csv1",
+                                                                  choices = c(`Select one` = "wait",
+                                                                              `Comma separated values (US .csv)` = "csv1",
                                                                               `Semicolon separated values (BR .csv)` = "csv2",
                                                                               `Tab separated values` = "tsv"),
-                                                                  selected = "tsv")),
+                                                                  selected = "wait")
+                                                      )
+                                                      ,
                                                column(4,
-                                                      textInput("tx_GOcolRef", label = "GO IDs column name", value = "GO IDs list")
+                                                       fileInput("file_b2gTableRef", "Choose reference GO IDs file",
+                                                       accept=c(".csv", ".tsv", ".txt"))
+                                                      ), 
+                                               column(4)
+                                             ),
+                                             fluidRow(
+                                               column(4,
+                                                      selectInput("cb_GOcolRef", label= "GO IDs column name", 
+                                                                  choices = c(`Load file first` = "wait"), 
+                                                                  selected = "wait")
                                                ),
                                                column(4,
                                                       textInput("tx_GOsepRef", label = "GO IDs separator", value = "; ")
-                                               )
+                                               ),
+                                               column(4)
                                              ),
                                              fluidRow(
                                                column(2,

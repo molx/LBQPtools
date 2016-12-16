@@ -2,7 +2,7 @@ library(shiny)
 #library(seqinr)
 
 # Define server logic required to draw a histogram
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
   
   ##### FASTA TOOLS #####
   
@@ -102,10 +102,26 @@ shinyServer(function(input, output) {
   
   ##### GO TOOLS #####
   
-  b2gTable <- reactive(switch(input$cb_GOfileType,
-                              tsv = readr::read_tsv(input$file_b2gTable$datapath),
-                              csv1 = readr::read_csv(input$file_b2gTable$datapath),
-                              csv2 = readr::read_csv2(input$file_b2gTable$datapath)))
+  observe(shinyjs::toggleState("file_b2gTable", condition = input$cb_GOfileType != "wait"))
+  observe(shinyjs::toggleState("cb_GOcol", condition = !is.null(input$file_b2gTable$datapath)))
+  
+  b2gTable <- eventReactive(input$file_b2gTable, {
+    out <- switch(input$cb_GOfileType,
+                  tsv = readr::read_tsv(input$file_b2gTable$datapath),
+                  csv1 = readr::read_csv(input$file_b2gTable$datapath),
+                  csv2 = readr::read_csv2(input$file_b2gTable$datapath))
+    
+    updateSelectInput(session, "cb_GOcol", choices = c("Select one", colnames(out)))
+    return(out)
+  })
+  
+  observeEvent(input$cb_GOcol, {
+    GOs <- as.character(b2gTable()[[input$cb_GOcol]])
+    cand <- GOs[nchar(GOs, keepNA = FALSE) > 12][1]
+    sep <- regmatches(cand, regexpr("(?<=\\d{7})([^CFPGO]*)", cand, perl = TRUE))
+    updateTextInput(session, "tx_GOsep", value = sep)
+  })
+  
   
   
   ### Descriptive 
@@ -113,7 +129,7 @@ shinyServer(function(input, output) {
   observeEvent(input$bt_GOdesc, {
     
     if (!is.null(input$file_b2gTable)) {
-      GOvec <- b2gTable()[[input$tx_GOcol]]
+      GOvec <- b2gTable()[[input$cb_GOcol]]
       
       extracted <- extract.go(GOvec = GOvec,
                               type = "all", removeCat = FALSE,
@@ -170,10 +186,32 @@ shinyServer(function(input, output) {
   
   #### Extract IDs
   
-  b2gTableRef <- reactive(switch(input$cb_GOfileTypeRef,
-                              tsv = readr::read_tsv(input$file_b2gTableRef$datapath),
-                              csv1 = readr::read_csv(input$file_b2gTableRef$datapath),
-                              csv2 = readr::read_csv2(input$file_b2gTableRef$datapath)))
+  observe(shinyjs::toggleState("file_b2gTableRef", condition = input$cb_GOfileTypeRef != "wait"))
+  observe(shinyjs::toggleState("cb_GOcolRef", condition = !is.null(input$file_b2gTableRef$datapath)))
+  
+  b2gTableRef <- eventReactive(input$file_b2gTableRef, {
+    out <- switch(input$cb_GOfileTypeRef,
+                  tsv = readr::read_tsv(input$file_b2gTableRef$datapath),
+                  csv1 = readr::read_csv(input$file_b2gTableRef$datapath),
+                  csv2 = readr::read_csv2(input$file_b2gTableRef$datapath))
+    
+    updateSelectInput(session, "cb_GOcolRef", choices = c("Select one", colnames(out)))
+    return(out)
+  })
+  
+  observeEvent(input$cb_GOcolRef, {
+    GOs <- as.character(b2gTableRef()[[input$cb_GOcolRef]])
+    cand <- GOs[nchar(GOs, keepNA = FALSE) > 12][1]
+    sep <- regmatches(cand, regexpr("(?<=\\d{7})([^CFPGO]*)", cand, perl = TRUE))
+    updateTextInput(session, "tx_GOsepRef", value = sep)
+  })
+  
+  
+  # b2gTableRef <- reactive(switch(input$cb_GOfileTypeRef,
+  #                             tsv = readr::read_tsv(input$file_b2gTableRef$datapath),
+  #                             csv1 = readr::read_csv(input$file_b2gTableRef$datapath),
+  #                             csv2 = readr::read_csv2(input$file_b2gTableRef$datapath)))
+  
   
   output$hp_NumGOLines <- renderUI({
     if (is.null(input$file_b2gTable)) {
@@ -189,7 +227,7 @@ shinyServer(function(input, output) {
       "GO_all_list.txt"
     },
     content = function(file) {
-      out <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
+      out <- extract.go(GOvec = b2gTable()[[input$cb_GOcol]],
                         type = "all", removeCat = input$cb_rmGOcat,
                         removeDups = input$cb_rmGOdups,
                         GOsep = input$tx_GOsep)$vec
@@ -202,7 +240,7 @@ shinyServer(function(input, output) {
       "GO_C_list.txt"
     },
     content = function(file) {
-      out <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
+      out <- extract.go(GOvec = b2gTable()[[input$cb_GOcol]],
                         type = "C", removeCat = input$cb_rmGOcat,
                         removeDups = input$cb_rmGOdups,
                         GOsep = input$tx_GOsep)$vec
@@ -215,7 +253,7 @@ shinyServer(function(input, output) {
       "GO_F_list.txt"
     },
     content = function(file) {
-      out <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
+      out <- extract.go(GOvec = b2gTable()[[input$cb_GOcol]],
                         type = "F", removeCat = input$cb_rmGOcat,
                         removeDups = input$cb_rmGOdups,
                         GOsep = input$tx_GOsep)$vec
@@ -228,7 +266,7 @@ shinyServer(function(input, output) {
       "GO_P_list.txt"
     },
     content = function(file) {
-      out <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
+      out <- extract.go(GOvec = b2gTable()[[input$cb_GOcol]],
                         type = "P", removeCat = input$cb_rmGOcat,
                         removeDups = input$cb_rmGOdups,
                         GOsep = input$tx_GOsep)$vec
@@ -240,12 +278,12 @@ shinyServer(function(input, output) {
   #### Enrichment
   
   FisherOut <- eventReactive(input$bt_GOFisher, {
-    GOvec <- extract.go(GOvec = b2gTable()[[input$tx_GOcol]],
+    GOvec <- extract.go(GOvec = b2gTable()[[input$cb_GOcol]],
                                 type = "all", removeCat = FALSE,
                                 removeDups = FALSE,
                                 GOsep = input$tx_GOsep)$vec
       
-    GOvecRef <- extract.go(GOvec = b2gTable()[[input$tx_GOcolRef]],
+    GOvecRef <- extract.go(GOvec = b2gTable()[[input$cb_GOcolRef]],
                            type = "all", removeCat = FALSE,
                            removeDups = FALSE,
                            GOsep = input$tx_GOsep)$vec
@@ -352,7 +390,7 @@ filter.fasta <- function(sequences, headers, minRes, maxRes) {
 extract.go <- function(GOvec, type = c("all", "C", "F", "P"),
                        removeCat = TRUE, removeDups = FALSE,
                        GOsep) {
-  vec <- unlist(strsplit(na.omit(GOvec), split = GOsep))
+  vec <- unlist(strsplit(as.character(na.omit(GOvec)), split = GOsep))
   
   if (removeDups) {
     vec <- unique(vec)
