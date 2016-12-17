@@ -28,7 +28,7 @@ shinyServer(function(input, output, session) {
     },
     content = function(file) {
       f1 <- Fasta1() #seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
-                     #             as.string = TRUE)
+      #             as.string = TRUE)
       #f1 <- seqinr::read.fasta("WF1.fasta", seqtype = "AA",
       #as.string = TRUE)
       
@@ -78,7 +78,7 @@ shinyServer(function(input, output, session) {
     },
     content = function(file) {
       fastaIn <- Fasta1()#seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
-                         #      as.string = TRUE)
+      #      as.string = TRUE)
       
       # fastaIn <- seqinr::read.fasta("2seqFasta.fasta", seqtype = "AA",
       #                               as.string = TRUE)
@@ -102,6 +102,15 @@ shinyServer(function(input, output, session) {
   
   ##### GO TOOLS #####
   
+  output$vb_GOhelp <- renderUI(HTML(paste("1. Select the file type of the GO IDs table to be analyzed. 
+The file must be a table with column names, even if it has only one column.",
+                                       "2. Select and upload the file.",
+                                       "3. From the dropdown list, select the column with the GO IDs.",
+                                       "4. In case there are multiple IDs per line (say multiple IDs related to one protein), 
+the app will try to identify the string between IDs. If the guess isn't correct, 
+type in the correct separator.",
+                                       sep = "<BR><BR>")))
+  
   observe(shinyjs::toggleState("file_b2gTable", condition = input$cb_GOfileType != "wait"))
   observe(shinyjs::toggleState("cb_GOcol", condition = !is.null(input$file_b2gTable$datapath)))
   
@@ -114,6 +123,12 @@ shinyServer(function(input, output, session) {
     updateSelectInput(session, "cb_GOcol", choices = c("Select one", colnames(out)))
     return(out)
   })
+  
+  # These output and output options make sure file upload is tracked and the call to the eventReactive above is executed when necessary
+  output$file_GOUploaded <- reactive({
+    return(!is.null(b2gTable()))
+  })
+  outputOptions(output, "file_GOUploaded", suspendWhenHidden = FALSE)
   
   observeEvent(input$cb_GOcol, {
     GOs <- as.character(b2gTable()[[input$cb_GOcol]])
@@ -128,7 +143,7 @@ shinyServer(function(input, output, session) {
   
   observeEvent(input$bt_GOdesc, {
     
-    if (!is.null(input$file_b2gTable)) {
+    if (!is.null(input$file_b2gTable) && input$cb_GOcol != "wait") {
       GOvec <- b2gTable()[[input$cb_GOcol]]
       
       extracted <- extract.go(GOvec = GOvec,
@@ -137,6 +152,13 @@ shinyServer(function(input, output, session) {
                               GOsep = input$tx_GOsep)
       
       cats <- extracted$cats 
+      
+      if (length(unique(cats)) != 3) {
+        hide("plot_GOpie")
+        hide("df_GOcounts")
+        hide("dt_GOall")
+        return (NULL)
+      }
       vec <- extracted$vec
       
       
@@ -180,7 +202,7 @@ shinyServer(function(input, output, session) {
     } else {
       NULL
     }
-
+    
   })
   
   
@@ -199,6 +221,12 @@ shinyServer(function(input, output, session) {
     return(out)
   })
   
+  # These output and output options make sure file upload is tracked and the call to the eventReactive above is executed when necessary
+  output$file_GOUploadedRef <- reactive({
+    return(!is.null(b2gTableRef()))
+  })
+  outputOptions(output, "file_GOUploadedRef", suspendWhenHidden = FALSE)
+  
   observeEvent(input$cb_GOcolRef, {
     GOs <- as.character(b2gTableRef()[[input$cb_GOcolRef]])
     cand <- GOs[nchar(GOs, keepNA = FALSE) > 12][1]
@@ -206,18 +234,20 @@ shinyServer(function(input, output, session) {
     updateTextInput(session, "tx_GOsepRef", value = sep)
   })
   
-  
-  # b2gTableRef <- reactive(switch(input$cb_GOfileTypeRef,
-  #                             tsv = readr::read_tsv(input$file_b2gTableRef$datapath),
-  #                             csv1 = readr::read_csv(input$file_b2gTableRef$datapath),
-  #                             csv2 = readr::read_csv2(input$file_b2gTableRef$datapath)))
-  
-  
   output$hp_NumGOLines <- renderUI({
     if (is.null(input$file_b2gTable)) {
-      helpText("Number of lines:", style = "font-weight: bold; color: #000000;")
+      helpText("Number of lines:", style = "font-weight: bold; color: #000000; visibility: hidden;")
     } else {
       tab <- b2gTable()
+      helpText(paste("Number of lines:", nrow(tab)), style = "font-weight: bold; color: #000000;")
+    }
+  })
+  
+  output$hp_NumGOLinesRef <- renderUI({
+    if (is.null(input$file_b2gTableRef)) {
+      helpText(" ", style = "font-weight: bold; color: #000000; visibility: hidden;")
+    } else {
+      tab <- b2gTableRef()
       helpText(paste("Number of lines:", nrow(tab)), style = "font-weight: bold; color: #000000;")
     }
   })
@@ -279,16 +309,18 @@ shinyServer(function(input, output, session) {
   
   FisherOut <- eventReactive(input$bt_GOFisher, {
     GOvec <- extract.go(GOvec = b2gTable()[[input$cb_GOcol]],
-                                type = "all", removeCat = FALSE,
-                                removeDups = FALSE,
-                                GOsep = input$tx_GOsep)$vec
-      
-    GOvecRef <- extract.go(GOvec = b2gTable()[[input$cb_GOcolRef]],
+                        type = "all", removeCat = FALSE,
+                        removeDups = FALSE,
+                        GOsep = input$tx_GOsep)$vec
+    
+    GOvecRef <- extract.go(GOvec = b2gTableRef()[[input$cb_GOcolRef]],
                            type = "all", removeCat = FALSE,
                            removeDups = FALSE,
-                           GOsep = input$tx_GOsep)$vec
+                           GOsep = input$tx_GOsepRef)$vec
     
     GOvec <- GOvec[GOvec %in% unique(GOvecRef)]
+    
+    if (is.null(GOvec)) return (NULL)
     
     # progress <- shiny::Progress$new()
     
@@ -322,16 +354,24 @@ shinyServer(function(input, output, session) {
                      data.frame(ID = target, p.value = f$p.value)
                    })
                  })
-    
-    do.call(rbind, Fisher)
+    #do.call(rbind, Fisher)
+    out <- do.call(rbind, Fisher)
+    out$q.value <- p.adjust(out$p.value, method = "fdr")
+    out
     
   })
   
-  output$tb_GOstat <- DT::renderDataTable(FisherOut(),
-                                          rownames= FALSE,
-                                          options = list(
-                                            autoWidth = TRUE,
-                                            columnDefs = list(list(width = '50%', targets = "_all"))))
+  output$tb_GOstat <- DT::renderDataTable({
+    fisher <- FisherOut()
+    if (!is.null(fisher)) {
+      dt <- DT::datatable(fisher, rownames = FALSE, 
+                          options = list(autoWidth = TRUE,
+                                         columnDefs = list(list(width = '30%', targets = 0))))
+      DT::formatSignif(dt, c("p.value", "q.value"), 5)
+    } else {
+      NULL
+    }
+  })
   
   output$bt_writeGOstat <-  downloadHandler(
     filename = function() {
@@ -390,7 +430,11 @@ filter.fasta <- function(sequences, headers, minRes, maxRes) {
 extract.go <- function(GOvec, type = c("all", "C", "F", "P"),
                        removeCat = TRUE, removeDups = FALSE,
                        GOsep) {
-  vec <- unlist(strsplit(as.character(na.omit(GOvec)), split = GOsep))
+  if (GOsep != "") {
+    vec <- unlist(strsplit(as.character(na.omit(GOvec)), split = GOsep))
+  } else {
+    vec <- as.character(na.omit(GOvec))
+  }
   
   if (removeDups) {
     vec <- unique(vec)

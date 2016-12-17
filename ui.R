@@ -75,20 +75,6 @@ shinyUI(
                                              downloadButton("bt_doMerge", label = "Merge and save")
                                     )
                                   )
-                                  # tags$h3("Output Preview"),
-                                  # actionButton("bt_genPreview", label = "Generate Preview"),
-                                  # fluidRow(
-                                  #   column(6,
-                                  #          sliderInput(inputId =  "nPreview", label = "Number of sequences in preview", 
-                                  #                      min = 1, max = 20, value = 10)
-                                  #   ),
-                                  #   column(6,
-                                  #          sliderInput(inputId =  "nbcharPreview", label = "Characters per line", 
-                                  #                      min = 20, max = 100, value = 60, step = 5)
-                                  #   )
-                                  # ),
-                                  # hr(),
-                                  # htmlOutput("preview")
                                 )
                               )
                      ),
@@ -115,14 +101,14 @@ shinyUI(
                                     )
                                   ),
                                   uiOutput("hp_NumGOLines"),
-                                  helpText(""),
-                                  helpText("For example, one cell of the column could be 'P:GO:0051297; C:GO:0031252; C:GO:0036064; P:GO:0035020'")
+                                  helpText("Instructions:", style = subtitlesStyle),
+                                  htmlOutput("vb_GOhelp")
                                 ),
                                 mainPanel(
                                   tabsetPanel(
                                     tabPanel("Descriptive Stastitics",
                                              tags$br(),
-                                             actionButton("bt_GOdesc", "Load file"),
+                                             actionButton("bt_GOdesc", "Analyze file"),
                                              helpText("This function is currently only useful for GO IDs which have the category indicator at the beginning."),
                                              fluidRow(
                                                column(4,
@@ -155,14 +141,12 @@ shinyUI(
                                                                               `Semicolon separated values (BR .csv)` = "csv2",
                                                                               `Tab separated values` = "tsv"),
                                                                   selected = "wait")
-                                                      )
-                                                      ,
+                                               ),
                                                column(4,
-                                                       fileInput("file_b2gTableRef", "Choose reference GO IDs file",
-                                                       accept=c(".csv", ".tsv", ".txt"))
-                                                      ), 
-                                               column(4)
-                                             ),
+                                                      fileInput("file_b2gTableRef", "Choose reference GO IDs file",
+                                                                accept=c(".csv", ".tsv", ".txt"))
+                                               ), 
+                                               column(4)),
                                              fluidRow(
                                                column(4,
                                                       selectInput("cb_GOcolRef", label= "GO IDs column name", 
@@ -172,7 +156,8 @@ shinyUI(
                                                column(4,
                                                       textInput("tx_GOsepRef", label = "GO IDs separator", value = "; ")
                                                ),
-                                               column(4)
+                                               column(4,
+                                                      uiOutput("hp_NumGOLinesRef"))
                                              ),
                                              fluidRow(
                                                column(2,
