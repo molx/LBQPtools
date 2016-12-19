@@ -29,7 +29,7 @@ shinyUI(
                               sidebarLayout(
                                 sidebarPanel(
                                   fileInput('file_Fasta1', 'Choose FASTA file',
-                                            accept=c('FASTA', 
+                                            accept = c('FASTA', 
                                                      '.fasta')),
                                   selectInput("seqtype", "Type of sequence", 
                                               choices = c(Aminoacids = "AA", Nucleotides = "DNA"), selected = "AA"),
@@ -41,14 +41,14 @@ shinyUI(
                                              tags$br(),
                                              helpText("Header List"),
                                              fileInput('fileHeaderFilter', 'Choose Header list file',
-                                                       accept=c('.txt')),
+                                                       accept = ('.txt')),
                                              actionButton("bt_resetHeaderList", label = "Reset"),
                                              helpText("Sequence Length (set 0 to disable)"),
-                                             div(style="display:inline-block;",
+                                             div(style = "display:inline-block;",
                                                  numericInput("minSeqFilter", "Min", value = 0,
                                                               min = 0, max = 1e5, step = 1,
                                                               width = 100)),
-                                             div(style="display:inline-block;",
+                                             div(style = "display:inline-block;",
                                                  numericInput("maxSeqFilter", "Max", value = 0,
                                                               min = 0, max = 1e5, step = 1,
                                                               width = 100)),
@@ -58,7 +58,7 @@ shinyUI(
                                     tabPanel("Merge",
                                              tags$br(),
                                              fileInput('file_Fasta2', 'Choose FASTA file #2',
-                                                       accept=c('FASTA', 
+                                                       accept = c('FASTA', 
                                                                 '.fasta')),
                                              checkboxInput("cb_rmFastaDups", label = "Remove Redundancies",
                                                            value = TRUE),
@@ -66,12 +66,12 @@ shinyUI(
                                                            value = TRUE),
                                              checkboxInput("cb_rmFastaConts", label = "Remove Contaminants",
                                                            value = TRUE),
-                                             div(style="display:inline-block;width:150px;",
+                                             div(style = "display:inline-block;width:150px;",
                                                  checkboxInput("cb_rmFastaTag", label = "Remove with tag:",
                                                                value = FALSE)),
-                                             div(style="display:inline-block;",
-                                                 tags$input(id = "tx_tagRemove", class="input-small")),
-                                             tags$br(),tags$br(),
+                                             div(style = "display:inline-block;",
+                                                 tags$input(id = "tx_tagRemove", class = "input-small")),
+                                             tags$br(), tags$br(),
                                              downloadButton("bt_doMerge", label = "Merge and save")
                                     )
                                   )
@@ -89,10 +89,10 @@ shinyUI(
                                                           `Tab separated values` = "tsv"),
                                               selected = "wait"),
                                   fileInput("file_b2gTable", "Choose GO IDs file",
-                                            accept=c(".csv", ".tsv", ".txt")),
+                                            accept = c(".csv", ".tsv", ".txt")),
                                   fluidRow(
                                     column(6,
-                                           selectInput("cb_GOcol", label= "GO IDs column name", 
+                                           selectInput("cb_GOcol", label = "GO IDs column name", 
                                                        choices = c(`Load file first` = "wait"), 
                                                        selected = "wait")
                                     ),
@@ -144,12 +144,12 @@ shinyUI(
                                                ),
                                                column(4,
                                                       fileInput("file_b2gTableRef", "Choose reference GO IDs file",
-                                                                accept=c(".csv", ".tsv", ".txt"))
+                                                                accept = c(".csv", ".tsv", ".txt"))
                                                ), 
                                                column(4)),
                                              fluidRow(
                                                column(4,
-                                                      selectInput("cb_GOcolRef", label= "GO IDs column name", 
+                                                      selectInput("cb_GOcolRef", label = "GO IDs column name", 
                                                                   choices = c(`Load file first` = "wait"), 
                                                                   selected = "wait")
                                                ),
@@ -172,13 +172,129 @@ shinyUI(
                                                       downloadButton("bt_writeGOstat", "Download Results"),
                                                       tags$br(),
                                                       selectInput("cb_GOstatFormat", "Output format",
-                                                                  choices = c(`csv (US)`= "csv1",
-                                                                              `csv (BR)`= "csv2"))),
+                                                                  choices = c(`csv (US)` = "csv1",
+                                                                              `csv (BR)` = "csv2"))),
                                                column(5,
                                                       DT::dataTableOutput("tb_GOstat"))
                                              ),
                                              column(5)
                                     )
+                                  )
+                                )
+                              )),
+                     tabPanel("Enrichment Tester",
+                              titlePanel("Enrichment Tester"),
+                              sidebarLayout(
+                                sidebarPanel(
+                                  selectInput("se_ETfileType", "File type", 
+                                              choices = c(`Select one` = "wait",
+                                                          `Comma separated values (US .csv)` = "csv1",
+                                                          `Semicolon separated values (BR .csv)` = "csv2",
+                                                          `Tab separated values` = "tsv"),
+                                              selected = "wait"),
+                                  fileInput("file_ET", "Choose file",
+                                            accept = c(".csv", ".tsv", ".txt")),
+                                  uiOutput("hp_NumETLines"),
+                                  fluidRow(
+                                    column(6,
+                                           selectInput("se_ETcol", label = "IDs column name", 
+                                                       choices = c(`Load file first` = "wait"), 
+                                                       selected = "wait")
+                                    ),
+                                    column(6
+                                    )
+                                  ),
+                                  fluidRow(
+                                    column(4,
+                                           radioButtons("rb_ETsep", label = NULL,
+                                                        choices = c(`Multiple IDs per line` = "mult",
+                                                                    `One ID per line` = "single"))
+                                           ),
+                                    column(6,
+                                           textInput("tx_ETsep", label = "IDs separator", value = "")
+                                           )
+                                  ),
+                                  fluidRow(
+                                    column(4,
+                                           radioButtons("rb_ETcountedData", label = NULL,
+                                                        choices = c(`Count IDs` = "count",
+                                                                    `IDs already counted` = "nocount"))
+                                           ),
+                                    column(6,
+                                           selectInput("se_ETcountCol", label = "Select the count column", 
+                                                       choices = c(`Load file first` = "wait"), 
+                                                       selected = "wait")
+                                           )
+                                  ),
+                                  radioButtons("rb_ETrefStyle", label = NULL,
+                                               choices = c(`Reference data on the other file` = "other",
+                                                           `Reference data on the same file` = "same"),
+                                               inline = TRUE),
+                                  conditionalPanel("input.rb_ETrefStyle == 'other'",
+                                                   fluidRow(
+                                                     column(6,
+                                                            selectInput("se_ETfileTypeRef", "Reference File type", 
+                                                               choices = c(`Select one` = "wait",
+                                                                           `Comma separated values (US .csv)` = "csv1",
+                                                                           `Semicolon separated values (BR .csv)` = "csv2",
+                                                                           `Tab separated values` = "tsv"),
+                                                               selected = "wait")
+                                                            ),
+                                                     column(6,
+                                                            fileInput("file_ETRef", "Choose reference file",
+                                                                      accept = c(".csv", ".tsv", ".txt"))
+                                                            )
+                                                   ),
+                                                   uiOutput("hp_NumETLinesRef")
+                                  ),
+                                  fluidRow(
+                                    column(6,
+                                           selectInput("se_ETcolRef", label = "Reference IDs column name", 
+                                                       choices = c(`Load file first` = "wait"), 
+                                                       selected = "wait")
+                                    ),
+                                    column(6
+                                    )
+                                  ),
+                                  fluidRow(
+                                    column(4,
+                                           radioButtons("rb_ETsepRef", label = NULL,
+                                                        choices = c(`Multiple IDs per line` = "mult",
+                                                                    `One ID per line` = "single"))
+                                    ),
+                                    column(6,
+                                           textInput("tx_ETsepRef", label = "Reference IDs separator", value = "")
+                                    )
+                                  ),
+                                  fluidRow(
+                                    column(4,
+                                           radioButtons("rb_ETcountedDataRef", label = NULL,
+                                                        choices = c(`Count IDs` = "count",
+                                                                    `IDs already counted` = "nocount"))
+                                    ),
+                                    column(6,
+                                           selectInput("se_ETcountColRef", label = "Select the reference count column", 
+                                                       choices = c(`Load file first` = "wait"), 
+                                                       selected = "wait")
+                                    )
+                                  )
+                                ),
+                                mainPanel(
+                                  tabsetPanel(
+                                    tabPanel("Results",
+                                             tags$br(),
+                                             fluidRow(
+                                               column(2,
+                                                      actionButton("bt_ETFisher", "Run tests!")
+                                                      ),
+                                               column(2,
+                                                      downloadButton("bt_writeETstat", "Download results")
+                                                      )
+                                             ),
+                                             tags$br(),
+                                             DT::dataTableOutput("tb_ETstat")),
+                                    tabPanel("Instructions",
+                                             htmlOutput("vb_EThelp"))
                                   )
                                 )
                               )),

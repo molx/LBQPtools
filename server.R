@@ -171,7 +171,7 @@ type in the correct separator.",
       vec_P <- vec[cats == "P"]
       
       output$plot_GOpie <- renderPlot({
-        par(mar=c(4,3,2,1))
+        par(mar = c(4,3,2,1))
         bp <- barplot(tab_cats, names.arg = cats_names[names(tab_cats)],
                       col = "lightblue", xlab = "Category", ylab = "Counts")
         text(x = bp, y = tab_cats, adj = c(0.5, 1), labels = tab_cats)
@@ -320,7 +320,7 @@ type in the correct separator.",
     
     GOvec <- GOvec[GOvec %in% unique(GOvecRef)]
     
-    if (is.null(GOvec)) return (NULL)
+    if (is.null(GOvec)) return(NULL)
     
     # progress <- shiny::Progress$new()
     
@@ -385,7 +385,235 @@ type in the correct separator.",
       }
     })
   
+  ##### Enrichment Tester #####
+  
+  # Main file UI behaviour 
+  
+  observe(shinyjs::toggleState("file_ET", condition = input$se_ETfileType != "wait"))
+  observe(shinyjs::toggleState("se_ETcol", condition = !is.null(input$file_ET$datapath)))
+  
+  ETmainfile <- eventReactive(input$file_ET, {
+    out <- switch(input$se_ETfileType,
+                  tsv = readr::read_tsv(input$file_ET$datapath),
+                  csv1 = readr::read_csv(input$file_ET$datapath),
+                  csv2 = readr::read_csv2(input$file_ET$datapath))
+    
+    updateSelectInput(session, "se_ETcol", choices = c("Select one", colnames(out)))
+    return(out)
+  })
+  
+  # These output and output options make sure file upload is tracked and the call to the eventReactive above is executed when necessary
+  output$file_ETuploaded <- reactive({
+    return(!is.null(ETmainfile()))
+  })
+  outputOptions(output, "file_ETuploaded", suspendWhenHidden = FALSE)
+  
+  observe(shinyjs::toggleState("tx_ETsep", condition = input$rb_ETsep == "mult" && !is.null(input$file_ET$datapath)))
+  
+  observe({
+    #shinyjs::toggleState("se_ETcountCol", condition = input$rb_ETcountedData == "nocount")
+    if (input$rb_ETcountedData == "nocount" && !is.null(input$file_ET$datapath)) {
+      shinyjs::enable("se_ETcountCol")
+      numCols <- colnames(ETmainfile())[sapply(ETmainfile(), class) == "integer"]
+      updateSelectInput(session, "se_ETcountCol",
+                        choices = numCols)
+    } else {
+      shinyjs::disable("se_ETcountCol")
+      updateSelectInput(session, "se_ETcountCol",
+                        choices = "")
+    }
+  })
+
+  output$hp_NumETLines <- renderUI({
+    if (is.null(input$file_ET)) {
+      helpText("Number of lines:", style = "font-weight: bold; color: #000000; visibility: hidden;")
+    } else {
+      tab <- ETmainfile()
+      helpText(paste("Number of lines:", nrow(tab)), style = "font-weight: bold; color: #000000;")
+    }
+  })
+  
+  # Ref file UI behaviour 
+  
+  observe({
+    if (input$rb_ETrefStyle == "same") {
+      updateSelectInput(session, "se_ETcolRef", choices = c("Select one", colnames(ETmainfile())))
+    } 
+  })
+  
+  observe(shinyjs::toggleState("file_ETRef", condition = input$se_ETfileTypeRef != "wait"))
+  observe(shinyjs::toggleState("se_ETcolRef", 
+                                condition = !((input$rb_ETrefStyle == "other" && is.null(input$file_ETRef$datapath)) ||
+                                 (input$rb_ETrefStyle == "same" && is.null(input$file_ET$datapath)))))
+  
+  
+  ETReffile <- reactive({
+    if (input$rb_ETrefStyle == "other" && !is.null(input$file_ETRef$datapath)) {
+      out <- switch(input$se_ETfileTypeRef,
+                  tsv = readr::read_tsv(input$file_ETRef$datapath),
+                  csv1 = readr::read_csv(input$file_ETRef$datapath),
+                  csv2 = readr::read_csv2(input$file_ETRef$datapath))
+    
+    updateSelectInput(session, "se_ETcolRef", choices = c("Select one", colnames(out)))
+    return(out)
+    } else if (input$rb_ETrefStyle == "same") {
+      ETmainfile()
+    } else {
+      NULL
+    }
+  })
+  
+  # These output and output options make sure file upload is tracked and the call to the eventReactive above is executed when necessary
+  output$file_ETuploadedRef <- reactive({
+    return(!is.null(ETReffile()))
+  })
+  outputOptions(output, "file_ETuploadedRef", suspendWhenHidden = FALSE)
+  
+  observe(shinyjs::toggleState("tx_ETsepRef", condition = input$rb_ETsepRef == "mult"))
+  observe({
+    #shinyjs::toggleState("se_ETcountColRef", condition = input$rb_ETcountedDataRef == "nocount")
+    dataFile <- if (input$rb_ETrefStyle == "same") ETmainfile() else ETReffile()
+    if (input$rb_ETcountedDataRef == "nocount") {
+      shinyjs::enable("se_ETcountColRef")
+      numCols <- colnames(dataFile)[sapply(dataFile, class) == "integer"]
+      updateSelectInput(session, "se_ETcountColRef",
+                        choices = numCols)
+    } else {
+      shinyjs::disable("se_ETcountColRef")
+      updateSelectInput(session, "se_ETcountColRef",
+                        choices = "")
+    }
+  })
+  
+  # Not working
+  output$hp_NumGOLinesRef <- renderUI({
+    if (is.null(input$file_ETRef)) {
+      helpText(" ", style = "font-weight: bold; color: #000000; visibility: hidden;")
+    } else if (input$rb_ETrefStyle == "other") {
+      tab <- ETreffile()
+      helpText(paste("Number of lines:", nrow(tab)), style = "font-weight: bold; color: #000000;")
+    } else {
+      helpText(" ", style = "font-weight: bold; color: #000000; visibility: hidden;")
+    }
+  })
+  
+  ### Analysis code
+  
+  ETFisherOut <- eventReactive(input$bt_ETFisher, {
+    
+    NAs <- is.na(ETmainfile()[[input$se_ETcol]]) | is.na(ETmainfile()[[input$se_ETcountCol]])
+    
+    NAsRef <- is.na(ETReffile()[[input$se_ETcolRef]]) | is.na(ETReffile()[[input$se_ETcountColRef]])
+    
+    vec <- as.character(ETmainfile()[[input$se_ETcol]][!NAs])
+    
+    if (input$rb_ETsep == "mult") {
+      vec <- unlist(strsplit(vec, split = input$tx_GOsep))
+    } 
+    
+    vecRef <- if (input$rb_ETrefStyle == "same") {
+      as.character(ETmainfile()[[input$se_ETcolRef]][!NAsRef])
+    } else {
+      as.character(ETreffile()[[input$se_ETcolRef]][!NAsRef])
+    }
+    
+    if (input$rb_ETsepRef == "mult") {
+      vecRef <- unlist(strsplit(vecRef, split = input$tx_GOsepRef))
+    } 
+    
+    # Keep only the main IDs that appear on Reference
+    foundOnRef <- vec %in% unique(vecRef) 
+    vec <- vec[foundOnRef]
+    
+    foundOnRef_Ref <- vecRef %in% unique(vec)
+    vecRef <- vecRef[foundOnRef_Ref]
+
+    if (is.null(vec)) {
+      message("Returning NULL")
+      return(NULL)
+    }
+
+    nIDs <- length(unique(vec))
+    
+    prog.interval <- seq(0, nIDs, length.out = 100)
+    
+    tab <- if (input$rb_ETcountedData == "count") {
+      unlist(table(vec))
+    } else {
+      dups <- duplicated(vec)
+      setNames(ETmainfile()[[input$se_ETcountCol]][!NAs][foundOnRef],
+               vec)[!dups]
+    }
+    
+    tabRef <- if (input$rb_ETcountedDataRef == "count") {
+      unlist(table(vecRef))
+    } else {
+      dups <- duplicated(vecRef)
+      setNames(ETReffile()[[input$se_ETcountColRef]][!NAsRef][foundOnRef_Ref],
+               vecRef)[!dups]
+    }
+
+    withProgress(message = "Performing tests", value = 0,
+                 {
+                   Fisher <- lapply(seq_along(unique(vec)), function(ID) {
+                     target <- vec[ID]
+                     
+                     target_exp <- tab[target]
+                     target_ref <- tabRef[target]
+                     
+                     rest_exp <- sum(tab) - target_exp
+                     rest_ref <- sum(tabRef) - target_ref
+                     
+                     mat <- matrix(c(target_exp, target_ref, rest_exp, rest_ref), ncol = 2)
+                     
+                     f <- fisher.test(mat, alternative = "greater")
+                     
+                     setProgress(findInterval(ID, prog.interval)/100,
+                                 detail = paste(ID, "out of", nIDs))
+                     
+                     data.frame(ID = target, p.value = f$p.value)
+                   })
+                 })
+    
+    out <- do.call(rbind, Fisher)
+    out$q.value <- p.adjust(out$p.value, method = "fdr")
+    out$TargetCount <- tab
+    out$ReferenceCount <- tabRef
+    out$TargetRatio <- out$TargetCount/sum(out$TargetCount)
+    out$ReferenceRatio <- out$ReferenceCount/sum(out$ReferenceCount)
+    out$ExpectedByChance <- out$ReferenceRatio*sum(out$TargetCount)
+    out$OverRepresentation <- out$TargetCount/out$ExpectedByChance
+    out
+    
+  })
+  
+  output$tb_ETstat <- DT::renderDataTable({
+    fisher <- ETFisherOut()
+    if (!is.null(fisher)) {
+      dt <- DT::datatable(fisher, rownames = FALSE,
+                          options = list(autoWidth = TRUE,
+                                         columnDefs = list(list(width = '30%', targets = 0))))
+      DT::formatSignif(dt, c("p.value", "q.value", "TargetRatio", "ReferenceRatio", 
+                             "ExpectedByChance", "OverRepresentation"), 3)
+    } else {
+      NULL
+    }
+  })
+  
+  output$bt_writeETstat <-  downloadHandler(
+    filename = function() {
+      "Enrichment_Test.csv"
+    },
+    content = function(file) {
+      if (input$se_ETfileType == "csv1") {
+        write.csv(x = ETFisherOut(), file = file, row.names = FALSE)
+      } else {
+        write.csv2(x = ETFisherOut(), file = file, row.names = FALSE)
+      }
+    })
+  
   ##### iTraq Ratio Check #####
+  
   
 })
 
@@ -413,13 +641,13 @@ write.oneseq <- function(pep, name, nbchar = 60) {
 
 filter.fasta <- function(sequences, headers, minRes, maxRes) {
   nRes <- sapply(sequences, nchar)
-  minResTF <- if(!is.na(minRes) && minRes > 0) {
+  minResTF <- if (!is.na(minRes) && minRes > 0) {
     nRes >= minRes
   } else TRUE
-  maxResTF <- if(!is.na(maxRes) && maxRes > 0) {
+  maxResTF <- if (!is.na(maxRes) && maxRes > 0) {
     nRes <= maxRes
   } else TRUE
-  headersTF <- if(!is.null(headers)) {
+  headersTF <- if (!is.null(headers)) {
     headersText <- readLines(headers$datapath)
     names(sequences) %in% headersText
   } else TRUE
