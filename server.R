@@ -490,7 +490,7 @@ type in the correct separator.",
     if (is.null(input$file_ETRef)) {
       helpText(" ", style = "font-weight: bold; color: #000000; visibility: hidden;")
     } else if (input$rb_ETrefStyle == "other") {
-      tab <- ETreffile()
+      tab <- ETReffile()
       helpText(paste("Number of lines:", nrow(tab)), style = "font-weight: bold; color: #000000;")
     } else {
       helpText(" ", style = "font-weight: bold; color: #000000; visibility: hidden;")
@@ -514,7 +514,7 @@ type in the correct separator.",
     vecRef <- if (input$rb_ETrefStyle == "same") {
       as.character(ETmainfile()[[input$se_ETcolRef]][!NAsRef])
     } else {
-      as.character(ETreffile()[[input$se_ETcolRef]][!NAsRef])
+      as.character(ETReffile()[[input$se_ETcolRef]][!NAsRef])
     }
     
     if (input$rb_ETsepRef == "mult") {
