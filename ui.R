@@ -110,7 +110,7 @@ shinyUI(
                                     tabPanel("Descriptive Stastitics",
                                              tags$br(),
                                              actionButton("bt_GOdesc", "Analyze file"),
-                                             helpText("This function is currently only useful for GO IDs which have the category indicator at the beginning."),
+                                             #helpText("This function is currently only useful for GO IDs which have the category indicator at the beginning."),
                                              fluidRow(
                                                column(7,
                                                        tableOutput("df_GOcounts")

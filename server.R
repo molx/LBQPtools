@@ -191,8 +191,8 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
       
       counts_table <- data.frame(Type = c("Cellular component", "Molecular function",
                                           "Biological process", "Unknown", "All"),
-                                 Total = c(tab_cats["C"], tab_cats["F"],
-                                           tab_cats["P"], tab_cats["Unknown"], length(vec)),
+                                 Total = c(as.character(tab_cats["C"]), as.character(tab_cats["F"]),
+                                           as.character(tab_cats["P"]), as.character(tab_cats["Unknown"]), length(vec)),
                                  Unique = c(length(unique(vec_C)), length(unique(vec_F)),
                                             length(unique(vec_P)), length(unique(vec_Unknw)),
                                             length(unique(vec))))
@@ -705,6 +705,8 @@ extract.go <- function(GOvec, type = c("all", "C", "F", "P"),
   rgxpr <- regexpr("[CFP]:", vec) #Detects which GO IDs came with category 
   cats <- rep("Unknown", length(vec)) #Creates a cat vector full of Unknowns
   cats[rgxpr != -1] <- regmatches(vec, rgxpr) #Replaces 'Unknown' values which are known with the matches found on the original vec
+  cats <- gsub(":", "", cats, fixed = TRUE)
+  print(head(cats))
   
   #cats <- gsub(":GO:\\d{7}", "", vec) # Old
   
