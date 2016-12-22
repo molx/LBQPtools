@@ -103,12 +103,11 @@ shinyServer(function(input, output, session) {
   ##### GO TOOLS #####
   
   output$vb_GOhelp <- renderUI(HTML(paste("1. Select the file type of the GO IDs table to be analyzed. 
-The file must be a table with column names, even if it has only one column.",
+The file must be a table with column names or a plain text file.",
                                        "2. Select and upload the file.",
-                                       "3. From the dropdown list, select the column with the GO IDs.",
-                                       "4. In case there are multiple IDs per line (say multiple IDs related to one protein), 
-the app will try to identify the string between IDs. If the guess isn't correct, 
-type in the correct separator.",
+                                       "3. From the dropdown list, select the column with the GO IDs (unless the file is plain text).",
+                                       "4. GO Tools will then parse the column/text and identify all GO IDs matching the pattern 'GO:XXXXXXX', 
+with optional 'C:', 'F:' or P:' tags at the beggining.",
                                        sep = "<BR><BR>")))
   
   observe(shinyjs::toggleState("file_b2gTable", condition = input$cb_GOfileType != "wait"))
@@ -118,9 +117,17 @@ type in the correct separator.",
     out <- switch(input$cb_GOfileType,
                   tsv = readr::read_tsv(input$file_b2gTable$datapath),
                   csv1 = readr::read_csv(input$file_b2gTable$datapath),
-                  csv2 = readr::read_csv2(input$file_b2gTable$datapath))
+                  csv2 = readr::read_csv2(input$file_b2gTable$datapath),
+                  txt = data.frame(IDs = readLines(input$file_b2gTable$datapath), 
+                                   stringsAsFactors = FALSE))
     
-    updateSelectInput(session, "cb_GOcol", choices = c("Select one", colnames(out)))
+    if (input$cb_GOfileType != "txt") {
+      updateSelectInput(session, "cb_GOcol", choices = c("Select one", colnames(out)))
+    } else {
+      updateSelectInput(session, "cb_GOcol", choices = c(`Text file` = "IDs"))
+      shinyjs::disable("cb_GOcol")
+    }
+    
     return(out)
   })
   
@@ -144,64 +151,77 @@ type in the correct separator.",
   observeEvent(input$bt_GOdesc, {
     
     if (!is.null(input$file_b2gTable) && input$cb_GOcol != "wait") {
+
       GOvec <- b2gTable()[[input$cb_GOcol]]
       
       extracted <- extract.go(GOvec = GOvec,
                               type = "all", removeCat = FALSE,
                               removeDups = FALSE,
                               GOsep = input$tx_GOsep)
-      
+
       cats <- extracted$cats 
       
-      if (length(unique(cats)) != 3) {
-        hide("plot_GOpie")
-        hide("df_GOcounts")
-        hide("dt_GOall")
-        return(NULL)
-      }
+      # if (length(unique(cats)) != 3) {
+      #   hide("plot_GOpie")
+      #   hide("df_GOcounts")
+      #   hide("dt_GOall")
+      #   return(NULL)
+      # }
       vec <- extracted$vec
       
       
-      cats_names <- c(F = "Molecular\nFunction", P = "Biological\nProcess", C = "Cellular\nComponent")
+      cats_names <- c(F = "Molecular\nFunction", P = "Biological\nProcess", 
+                      C = "Cellular\nComponent", Unknown = "Unknown")
       tab_cats <- table(cats)
       tab_ids <- table(vec)
       
       vec_C <- vec[cats == "C"]
       vec_F <- vec[cats == "F"]
       vec_P <- vec[cats == "P"]
+      vec_Unknw <- vec[cats == "Unknown"]
       
-      output$plot_GOpie <- renderPlot({
+      output$plot_GObar <- renderPlot({
         par(mar = c(4,3,2,1))
         bp <- barplot(tab_cats, names.arg = cats_names[names(tab_cats)],
                       col = "lightblue", xlab = "Category", ylab = "Counts")
         text(x = bp, y = tab_cats, adj = c(0.5, 1), labels = tab_cats)
       })
       
-      counts_table <- data.frame(Type = c("Cellular component", "Molecular function", 
-                                          "Biological process", "All"),
-                                 Total = c(tab_cats["C"], tab_cats["F"], 
-                                           tab_cats["P"], length(vec)),
+      # output$plot_GObar <- renderPlot(plot(1:10))
+      
+      counts_table <- data.frame(Type = c("Cellular component", "Molecular function",
+                                          "Biological process", "Unknown", "All"),
+                                 Total = c(tab_cats["C"], tab_cats["F"],
+                                           tab_cats["P"], tab_cats["Unknown"], length(vec)),
                                  Unique = c(length(unique(vec_C)), length(unique(vec_F)),
-                                            length(unique(vec_P)), length(unique(vec))))
+                                            length(unique(vec_P)), length(unique(vec_Unknw)),
+                                            length(unique(vec))))
+
+      counts_table$Total[is.na(counts_table$Total)] <- 0
       
       output$df_GOcounts <- renderTable(counts_table)
       
-      GO_counted <- as.data.frame(tab_ids)
+      GO_counted <- data.frame(tab_ids)
       colnames(GO_counted) <- c("ID", "Counts")
+      GO_counted$ID <- as.character(GO_counted$ID)
       GO_counted$Category <- cats_names[gsub(":GO:\\d{7}", "", GO_counted$ID)]
       GO_counted <- GO_counted[order(GO_counted$Counts, GO_counted$ID, decreasing = TRUE),]
       
-      output$dt_GOall <- DT::renderDataTable(GO_counted, 
+      #output$dt_GOall <- DT::renderDataTable(GO_counted)
+      output$dt_GOall <- DT::renderDataTable(GO_counted,
                                              rownames = FALSE,
                                              class = "compact",
                                              options = list(
                                                autoWidth = TRUE,
                                                columnDefs = list(list(width = "80%", targets = 2),
                                                                  list(className = 'dt-center', targets = "_all"))))
-      
     } else {
       NULL
     }
+    
+    # reactivePlot({
+    #   plot(1:10)
+    # })
     
   })
   
@@ -665,18 +685,28 @@ filter.fasta <- function(sequences, headers, minRes, maxRes) {
 
 extract.go <- function(GOvec, type = c("all", "C", "F", "P"),
                        removeCat = TRUE, removeDups = FALSE,
-                       GOsep) {
-  if (GOsep != "") {
-    vec <- unlist(strsplit(as.character(na.omit(GOvec)), split = GOsep))
-  } else {
-    vec <- as.character(na.omit(GOvec))
-  }
+                       GOsep = "; ") {
+  
+  vec <- as.character(na.omit(GOvec))
+  
+  # Instead of trying to separate, just regex the shit out of all the input
+  vec <- unlist(regmatches(vec, gregexpr("(C:|F:|P:)?GO:\\d{7}", vec)))
+  
+  # if (GOsep != "") {
+  #   vec <- unlist(strsplit(as.character(na.omit(GOvec)), split = GOsep))
+  # } else {
+  #   vec <- as.character(na.omit(GOvec))
+  # }
   
   if (removeDups) {
     vec <- unique(vec)
   }
   
-  cats <- gsub(":GO:\\d{7}", "", vec)
+  rgxpr <- regexpr("[CFP]:", vec) #Detects which GO IDs came with category 
+  cats <- rep("Unknown", length(vec)) #Creates a cat vector full of Unknowns
+  cats[rgxpr != -1] <- regmatches(vec, rgxpr) #Replaces 'Unknown' values which are known with the matches found on the original vec
+  
+  #cats <- gsub(":GO:\\d{7}", "", vec) # Old
   
   if (removeCat) {
     vec <- gsub("[CFP]:", "", vec)
@@ -684,6 +714,7 @@ extract.go <- function(GOvec, type = c("all", "C", "F", "P"),
   
   if (type[1] != "all") {
     vec <- vec[cats == type[1]]
+    cats <- cats[cats == type[1]]    
   }
   
   list(vec = vec, cats = cats)

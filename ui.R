@@ -86,7 +86,8 @@ shinyUI(
                                               choices = c(`Select one` = "wait",
                                                           `Comma separated values (US .csv)` = "csv1",
                                                           `Semicolon separated values (BR .csv)` = "csv2",
-                                                          `Tab separated values` = "tsv"),
+                                                          `Tab separated values` = "tsv",
+                                                          `Text file` = "txt"),
                                               selected = "wait"),
                                   fileInput("file_b2gTable", "Choose GO IDs file",
                                             accept = c(".csv", ".tsv", ".txt")),
@@ -96,8 +97,8 @@ shinyUI(
                                                        choices = c(`Load file first` = "wait"), 
                                                        selected = "wait")
                                     ),
-                                    column(6,
-                                           textInput("tx_GOsep", label = "GO IDs separator", value = "")
+                                    column(6#,
+                                           #textInput("tx_GOsep", label = "GO IDs separator", value = "")
                                     )
                                   ),
                                   uiOutput("hp_NumGOLines"),
@@ -112,15 +113,16 @@ shinyUI(
                                              helpText("This function is currently only useful for GO IDs which have the category indicator at the beginning."),
                                              fluidRow(
                                                column(4,
-                                                      plotOutput("plot_GOpie")
+                                                      DT::dataTableOutput("dt_GOall")
                                                ),
                                                column(3,
                                                       tableOutput("df_GOcounts")
                                                ),
                                                column(5,
-                                                      DT::dataTableOutput("dt_GOall")
+                                                      plotOutput("plot_GObar")
                                                )
-                                             )
+                                             ),
+                                             plotOutput("plot_GObar")
                                     ),
                                     tabPanel("Extract IDs from table",
                                              checkboxInput("cb_rmGOcat", "Remove Category from GO IDs ('C:', 'F:' or 'P:')", 
