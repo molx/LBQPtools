@@ -73,7 +73,7 @@ shinyServer(function(input, output, session) {
   )
   
   output$bt_doFilter <- downloadHandler(
-    filename = function () {
+    filename = function() {
       "FilteredFasta.fasta"
     },
     content = function(file) {
@@ -157,7 +157,7 @@ type in the correct separator.",
         hide("plot_GOpie")
         hide("df_GOcounts")
         hide("dt_GOall")
-        return (NULL)
+        return(NULL)
       }
       vec <- extracted$vec
       
@@ -500,17 +500,25 @@ type in the correct separator.",
   ### Analysis code
   
   ETFisherOut <- eventReactive(input$bt_ETFisher, {
+
+    NAs <- if (input$rb_ETcountedData == "count") {
+      is.na(ETmainfile()[[input$se_ETcol]])
+    } else {
+      is.na(ETmainfile()[[input$se_ETcol]]) | is.na(ETmainfile()[[input$se_ETcountCol]])
+    }
     
-    NAs <- is.na(ETmainfile()[[input$se_ETcol]]) | is.na(ETmainfile()[[input$se_ETcountCol]])
-    
-    NAsRef <- is.na(ETReffile()[[input$se_ETcolRef]]) | is.na(ETReffile()[[input$se_ETcountColRef]])
+    NAsRef <- if (input$rb_ETcountedDataRef == "count") {
+      is.na(ETReffile()[[input$se_ETcolRef]])
+    } else {
+      is.na(ETReffile()[[input$se_ETcolRef]]) | is.na(ETReffile()[[input$se_ETcountColRef]])
+    }
     
     vec <- as.character(ETmainfile()[[input$se_ETcol]][!NAs])
     
     if (input$rb_ETsep == "mult") {
-      vec <- unlist(strsplit(vec, split = input$tx_GOsep))
+      vec <- unlist(strsplit(vec, split = input$tx_ETsep, fixed = TRUE))
     } 
-    
+
     vecRef <- if (input$rb_ETrefStyle == "same") {
       as.character(ETmainfile()[[input$se_ETcolRef]][!NAsRef])
     } else {
@@ -518,13 +526,13 @@ type in the correct separator.",
     }
     
     if (input$rb_ETsepRef == "mult") {
-      vecRef <- unlist(strsplit(vecRef, split = input$tx_GOsepRef))
+      vecRef <- unlist(strsplit(vecRef, split = input$tx_ETsepRef, fixed = TRUE))
     } 
     
     # Keep only the main IDs that appear on Reference
     foundOnRef <- vec %in% unique(vecRef) 
     vec <- vec[foundOnRef]
-    
+
     foundOnRef_Ref <- vecRef %in% unique(vec)
     vecRef <- vecRef[foundOnRef_Ref]
 
@@ -577,8 +585,8 @@ type in the correct separator.",
     
     out <- do.call(rbind, Fisher)
     out$q.value <- p.adjust(out$p.value, method = "fdr")
-    out$TargetCount <- tab
-    out$ReferenceCount <- tabRef
+    out$TargetCount <- as.numeric(tab) #Remove table class to avoid DT bug in v 2.0
+    out$ReferenceCount <- as.numeric(tabRef)
     out$TargetRatio <- out$TargetCount/sum(out$TargetCount)
     out$ReferenceRatio <- out$ReferenceCount/sum(out$ReferenceCount)
     out$ExpectedByChance <- out$ReferenceRatio*sum(out$TargetCount)
