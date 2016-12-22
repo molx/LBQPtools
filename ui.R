@@ -1,11 +1,11 @@
 library(shiny)
-library(shinyjs)
+#library(shinyjs)
 
 subtitlesStyle <- "font-weight: bold; color: #000000;"
 
 # Define UI for application that draws a histogram
 shinyUI(
-  tagList(useShinyjs(),
+  tagList(shinyjs::useShinyjs(),
           tags$head(
             tags$style((HTML("
                               #shiny-notification-panel {
@@ -112,17 +112,14 @@ shinyUI(
                                              actionButton("bt_GOdesc", "Analyze file"),
                                              helpText("This function is currently only useful for GO IDs which have the category indicator at the beginning."),
                                              fluidRow(
-                                               column(4,
-                                                      DT::dataTableOutput("dt_GOall")
-                                               ),
-                                               column(3,
-                                                      tableOutput("df_GOcounts")
+                                               column(7,
+                                                       tableOutput("df_GOcounts")
                                                ),
                                                column(5,
-                                                      plotOutput("plot_GObar")
+                                                     plotOutput("plot_GObar")
                                                )
                                              ),
-                                             plotOutput("plot_GObar")
+                                             DT::dataTableOutput("dt_GOall")
                                     ),
                                     tabPanel("Extract IDs from table",
                                              checkboxInput("cb_rmGOcat", "Remove Category from GO IDs ('C:', 'F:' or 'P:')", 

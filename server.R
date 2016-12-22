@@ -210,10 +210,10 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
       #output$dt_GOall <- DT::renderDataTable(GO_counted)
       output$dt_GOall <- DT::renderDataTable(GO_counted,
                                              rownames = FALSE,
-                                             class = "compact",
+                                             #class = "compact",
                                              options = list(
                                                autoWidth = TRUE,
-                                               columnDefs = list(list(width = "80%", targets = 2),
+                                               columnDefs = list(#list(width = "80%", targets = 2),
                                                                  list(className = 'dt-center', targets = "_all"))))
     } else {
       NULL
