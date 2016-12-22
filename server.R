@@ -191,8 +191,8 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
       
       counts_table <- data.frame(Type = c("Cellular component", "Molecular function",
                                           "Biological process", "Unknown", "All"),
-                                 Total = c(as.character(tab_cats["C"]), as.character(tab_cats["F"]),
-                                           as.character(tab_cats["P"]), as.character(tab_cats["Unknown"]), length(vec)),
+                                 Total = c(as.integer(tab_cats["C"]), as.integer(tab_cats["F"]),
+                                           as.integer(tab_cats["P"]), as.integer(tab_cats["Unknown"]), length(vec)),
                                  Unique = c(length(unique(vec_C)), length(unique(vec_F)),
                                             length(unique(vec_P)), length(unique(vec_Unknw)),
                                             length(unique(vec))))
@@ -483,11 +483,13 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
     }
   })
   
+  
   # These output and output options make sure file upload is tracked and the call to the eventReactive above is executed when necessary
   output$file_ETuploadedRef <- reactive({
     return(!is.null(ETReffile()))
   })
   outputOptions(output, "file_ETuploadedRef", suspendWhenHidden = FALSE)
+  
   
   observe(shinyjs::toggleState("tx_ETsepRef", condition = input$rb_ETsepRef == "mult"))
   observe({
@@ -606,10 +608,10 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
     out <- do.call(rbind, Fisher)
     out$q.value <- p.adjust(out$p.value, method = "fdr")
     out$TargetCount <- as.numeric(tab) #Remove table class to avoid DT bug in v 2.0
-    out$ReferenceCount <- as.numeric(tabRef)
+    out$RefCount <- as.numeric(tabRef)
     out$TargetRatio <- out$TargetCount/sum(out$TargetCount)
-    out$ReferenceRatio <- out$ReferenceCount/sum(out$ReferenceCount)
-    out$ExpectedByChance <- out$ReferenceRatio*sum(out$TargetCount)
+    out$RefRatio <- out$RefCount/sum(out$RefCount)
+    out$ExpectedByChance <- out$RefRatio*sum(out$TargetCount)
     out$OverRepresentation <- out$TargetCount/out$ExpectedByChance
     out
     
@@ -618,10 +620,23 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
   output$tb_ETstat <- DT::renderDataTable({
     fisher <- ETFisherOut()
     if (!is.null(fisher)) {
+      
+      output$ET_colsCB <- renderUI({
+        cols <- colnames(fisher)
+        checkboxGroupInput("cb_ET", label = "Columns to export",
+                           choices = setNames(paste0("cb_ET", cols),
+                                              cols),
+                           selected = paste0("cb_ET", cols),
+                           inline = TRUE)
+        # lapply(cols, function(cb) {
+        #   checkboxInput(paste0("cb_ET", cb), label = cb, value = TRUE)
+        # })
+      })
+      
       dt <- DT::datatable(fisher, rownames = FALSE,
                           options = list(autoWidth = TRUE,
                                          columnDefs = list(list(width = '30%', targets = 0))))
-      DT::formatSignif(dt, c("p.value", "q.value", "TargetRatio", "ReferenceRatio", 
+      DT::formatSignif(dt, c("p.value", "q.value", "TargetRatio", "RefRatio", 
                              "ExpectedByChance", "OverRepresentation"), 3)
     } else {
       NULL
@@ -633,11 +648,14 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
       "Enrichment_Test.csv"
     },
     content = function(file) {
-      if (input$se_ETfileType == "csv1") {
-        write.csv(x = ETFisherOut(), file = file, row.names = FALSE)
-      } else {
-        write.csv2(x = ETFisherOut(), file = file, row.names = FALSE)
-      }
+      print(colnames(ETFisherOut()))
+      print(input$cb_ET)
+      out <- ETFisherOut()[,gsub("cb_ET", "", input$cb_ET)]
+      switch(input$se_ETGOstatFormat,
+             csv1 = write.csv(x = out, file = file, row.names = FALSE),
+             csv2 = write.csv2(x = out, file = file, row.names = FALSE),
+             tsv = write.table(x = out, file = file, row.names = FALSE,
+                               sep = "\t"))
     })
   
   ##### iTraq Ratio Check #####
@@ -706,7 +724,6 @@ extract.go <- function(GOvec, type = c("all", "C", "F", "P"),
   cats <- rep("Unknown", length(vec)) #Creates a cat vector full of Unknowns
   cats[rgxpr != -1] <- regmatches(vec, rgxpr) #Replaces 'Unknown' values which are known with the matches found on the original vec
   cats <- gsub(":", "", cats, fixed = TRUE)
-  print(head(cats))
   
   #cats <- gsub(":GO:\\d{7}", "", vec) # Old
   

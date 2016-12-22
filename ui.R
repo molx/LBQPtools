@@ -85,7 +85,7 @@ shinyUI(
                                   selectInput("cb_GOfileType", "File type", 
                                               choices = c(`Select one` = "wait",
                                                           `Comma separated values (US .csv)` = "csv1",
-                                                          `Semicolon separated values (BR .csv)` = "csv2",
+                                                          `Semicolon separated values (EU/BR .csv)` = "csv2",
                                                           `Tab separated values` = "tsv",
                                                           `Text file` = "txt"),
                                               selected = "wait"),
@@ -137,7 +137,7 @@ shinyUI(
                                                       selectInput("cb_GOfileTypeRef", "File type", 
                                                                   choices = c(`Select one` = "wait",
                                                                               `Comma separated values (US .csv)` = "csv1",
-                                                                              `Semicolon separated values (BR .csv)` = "csv2",
+                                                                              `Semicolon separated values (EU/BR .csv)` = "csv2",
                                                                               `Tab separated values` = "tsv"),
                                                                   selected = "wait")
                                                ),
@@ -172,7 +172,7 @@ shinyUI(
                                                       tags$br(),
                                                       selectInput("cb_GOstatFormat", "Output format",
                                                                   choices = c(`csv (US)` = "csv1",
-                                                                              `csv (BR)` = "csv2"))),
+                                                                              `csv (EU/BR)` = "csv2"))),
                                                column(5,
                                                       DT::dataTableOutput("tb_GOstat"))
                                              ),
@@ -188,7 +188,7 @@ shinyUI(
                                   selectInput("se_ETfileType", "File type", 
                                               choices = c(`Select one` = "wait",
                                                           `Comma separated values (US .csv)` = "csv1",
-                                                          `Semicolon separated values (BR .csv)` = "csv2",
+                                                          `Semicolon separated values (EU/BR .csv)` = "csv2",
                                                           `Tab separated values` = "tsv"),
                                               selected = "wait"),
                                   fileInput("file_ET", "Choose file",
@@ -235,7 +235,7 @@ shinyUI(
                                                             selectInput("se_ETfileTypeRef", "Reference File type", 
                                                                choices = c(`Select one` = "wait",
                                                                            `Comma separated values (US .csv)` = "csv1",
-                                                                           `Semicolon separated values (BR .csv)` = "csv2",
+                                                                           `Semicolon separated values (EU/BR .csv)` = "csv2",
                                                                            `Tab separated values` = "tsv"),
                                                                selected = "wait")
                                                             ),
@@ -286,10 +286,16 @@ shinyUI(
                                                column(2,
                                                       actionButton("bt_ETFisher", "Run tests!")
                                                       ),
-                                               column(2,
+                                               column(3,
                                                       downloadButton("bt_writeETstat", "Download results")
-                                                      )
+                                                      ),
+                                               column(3,
+                                                      selectInput("se_ETGOstatFormat", NA,
+                                                                  choices = c(`csv (US)` = "csv1",
+                                                                              `csv (EU/BR)` = "csv2",
+                                                                              `Tab separated` = "tsv")))
                                              ),
+                                             uiOutput("ET_colsCB", inline = TRUE),
                                              tags$br(),
                                              DT::dataTableOutput("tb_ETstat")),
                                     tabPanel("Instructions",
