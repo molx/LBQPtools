@@ -72,9 +72,13 @@ shinyServer(function(input, output, session) {
     }
   )
   
-  output$bt_doFilter <- downloadHandler(
+  output$FT_bt_doFilter <- downloadHandler(
     filename = function() {
-      "FilteredFasta.fasta"
+      switch(input$FT_se_exportType,
+             fasta = "FilteredFasta.fasta",
+             ids = "FilteredIDs.txt",
+             headers = "FilteredHeaders.txt",
+             sequences = "FilteredSequences.txt")
     },
     content = function(file) {
       fastaIn <- Fasta1()#seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
@@ -85,18 +89,23 @@ shinyServer(function(input, output, session) {
       
       out <- filter.fasta(sequences = fastaIn,
                           headers = input$fileHeaderFilter,
+                          headersType = input$FT_rb_headerListType,
+                          headersMatchType = input$FT_rb_headerListMatchType,
                           minRes = input$minSeqFilter, maxRes = input$maxSeqFilter)
-      
-      seqinr::write.fasta(sequences = out, 
-                          names = clearHeader(seqinr::getAnnot(out)),
-                          file.out = file,
-                          as.string = TRUE)
+      switch(input$FT_se_exportType,
+             fasta = seqinr::write.fasta(sequences = out, 
+                                         names = clearHeader(seqinr::getAnnot(out)),
+                                         file.out = file,
+                                         as.string = TRUE),
+             ids = writeLines(names(out), con = file),
+             headers = writeLines(clearHeader(seqinr::getAnnot(out)), con = file),
+             sequences = writeLines(as.character(out), con = file))
     }
   )
   
-  observeEvent(input$bt_resetHeaderList, {
-    reset("fileHeaderFilter")
-  })
+  # observeEvent(input$bt_resetHeaderList, {
+  #   reset("fileHeaderFilter")
+  # })
   
   
   
@@ -685,7 +694,8 @@ write.oneseq <- function(pep, name, nbchar = 60) {
   paste0(start, aas)
 }
 
-filter.fasta <- function(sequences, headers, minRes, maxRes) {
+filter.fasta <- function(sequences, headers, headersType, headersMatchType,
+                         minRes, maxRes) {
   nRes <- sapply(sequences, nchar)
   minResTF <- if (!is.na(minRes) && minRes > 0) {
     nRes >= minRes
@@ -695,7 +705,17 @@ filter.fasta <- function(sequences, headers, minRes, maxRes) {
   } else TRUE
   headersTF <- if (!is.null(headers)) {
     headersText <- readLines(headers$datapath)
-    names(sequences) %in% headersText
+    headersPattern <- paste(headersText, collapse = "|")
+    headerMatches <- switch(headersMatchType, 
+                            idpartial = grepl(headersPattern, names(sequences)),
+                            idexact = names(sequences) %in% headersText,
+                            fullpartial = grepl(headersPattern, seqinr::getAnnot(sequences)),
+                            fullexact = seqinr::getAnnot(sequences) %in% headersText)
+    print(headersPattern)
+    print(names(sequences))
+    print(headerMatches)
+    #names(sequences) %in% headersText
+    xor(headerMatches, !(headersType == "keep"))
   } else TRUE
   filtered <- sequences[minResTF & maxResTF & headersTF]
   return(filtered)

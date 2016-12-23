@@ -7,8 +7,7 @@ subtitlesStyle <- "font-weight: bold; color: #000000;"
 shinyUI(
   tagList(shinyjs::useShinyjs(),
           tags$head(
-            tags$style((HTML("
-                              #shiny-notification-panel {
+            tags$style((HTML("#shiny-notification-panel {
                                   position: fixed;
                                   bottom: 50%;
                                   right: 50%;
@@ -17,14 +16,23 @@ shinyUI(
                                   position: fixed;
                                   top: 50%;
                                   right: 50%;
-                              }"
+                              }
+                              .multcol {
+                                  height: 60px;
+                                  column-count: 2; 
+                                  column-fill: balance; 
+                                  margin-top: 10px;
+                              }
+                              .multcol div.radio {
+                                  margin-top: 0px;
+                                  margin-bottom: 0px;
+                                  padding-bottom: 5px;
+                             }
+                             "
             )))
           ),
           navbarPage("LBQP Tools",
                      tabPanel("Fasta Tools",
-                              tags$head(tags$style("#preview{font-family: monospace;}"
-                              )
-                              ),
                               titlePanel("Fasta Tools"),
                               sidebarLayout(
                                 sidebarPanel(
@@ -39,21 +47,53 @@ shinyUI(
                                   tabsetPanel(
                                     tabPanel("Filters",
                                              tags$br(),
-                                             helpText("Header List"),
-                                             fileInput('fileHeaderFilter', 'Choose Header list file',
-                                                       accept = ('.txt')),
-                                             actionButton("bt_resetHeaderList", label = "Reset"),
-                                             helpText("Sequence Length (set 0 to disable)"),
-                                             div(style = "display:inline-block;",
-                                                 numericInput("minSeqFilter", "Min", value = 0,
-                                                              min = 0, max = 1e5, step = 1,
-                                                              width = 100)),
-                                             div(style = "display:inline-block;",
-                                                 numericInput("maxSeqFilter", "Max", value = 0,
-                                                              min = 0, max = 1e5, step = 1,
-                                                              width = 100)),
-                                             tags$br(),tags$br(),
-                                             downloadButton("bt_doFilter", label = "Filter and save")
+                                             fluidRow(
+                                               column(3,
+                                                      radioButtons("FT_rb_headerListType", label = NA, 
+                                                                   choices = c(`Keep only headers in file` = "keep",
+                                                                               `Remove all headers in fle` = "remove"),
+                                                                   selected = "keep")),
+                                               column(4,
+                                                      fileInput('fileHeaderFilter', 'Choose Header list file',
+                                                                accept = ('.txt'))),
+                                               column(5,
+                                                      div(class = "multcol",
+                                                          radioButtons("FT_rb_headerListMatchType", label = NA,
+                                                                       choices = c(`ID only - partial` = "idpartial",
+                                                                                   `ID only - exact` = "idexact",
+                                                                                   `Full header - partial` = "fullpartial",
+                                                                                   `Full header - exact` = "fullexact")))
+                                                          )
+                                             ),
+                                             #actionButton("bt_resetHeaderList", label = "Reset"),
+                                             fluidRow(
+                                               column(2, 
+                                                      helpText("Sequence Length (set 0 to disable)")
+                                               ),
+                                               column(6,
+                                                      div(style = "display:inline-block;",
+                                                          numericInput("minSeqFilter", "Min", value = 0,
+                                                                       min = 0, max = 1e5, step = 1,
+                                                                       width = 100)),
+                                                      div(style = "display:inline-block;",
+                                                          numericInput("maxSeqFilter", "Max", value = 0,
+                                                                       min = 0, max = 1e5, step = 1,
+                                                                       width = 100))
+                                               )
+                                             ),
+                                             tags$br(),
+                                             fluidRow(
+                                               column(3,
+                                                      selectInput("FT_se_exportType", label = NA,
+                                                                  choices = c(`Export as Fasta file` = "fasta",
+                                                                              `Export only IDs` = "ids",
+                                                                              `Export only headers` = "headers",
+                                                                              `Export only sequences` = "sequences"))
+                                                      ),
+                                               column(4,
+                                                      downloadButton("FT_bt_doFilter", label = "Filter and save")
+                                                      )
+                                             )
                                     ),
                                     tabPanel("Merge",
                                              tags$br(),
