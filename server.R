@@ -229,6 +229,8 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
   
   ### Descriptive 
   
+  GO_countTable <- reactiveValues()
+  
   observeEvent(input$bt_GOdesc, {
     
     if (!is.null(input$file_b2gTable) && input$cb_GOcol != "wait") {
@@ -288,6 +290,8 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
       GO_counted$Category <- cats_names[gsub(":GO:\\d{7}", "", GO_counted$ID)]
       GO_counted <- GO_counted[order(GO_counted$Counts, GO_counted$ID, decreasing = TRUE),]
       
+      GO_countTable$table <- GO_counted
+      
       #output$dt_GOall <- DT::renderDataTable(GO_counted)
       output$dt_GOall <- DT::renderDataTable(GO_counted,
                                              rownames = FALSE,
@@ -306,6 +310,22 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
     
   })
   
+  output$bt_GOdownSummary <-  downloadHandler(
+    filename = function() {
+      "GO_Summary.csv"
+    },
+    content = function(file) {
+      out <- GO_countTable$table
+      out$Category <- gsub("\n", " ", out$Category, fixed = TRUE)
+      if (!input$cb_GOsummaryKeepCat) {
+        out$ID <- gsub("^[CFP]:", "", out$ID)
+      }
+      if (input$se_GOsummaryFormat == "csv1") {
+        write.csv(out, file = file, row.names = FALSE)
+      } else {
+        write.csv2(out, file = file, row.names = FALSE)
+      }
+    })
   
   #### Extract IDs
   

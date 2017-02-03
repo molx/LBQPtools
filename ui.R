@@ -179,6 +179,19 @@ shinyUI(
                                                      plotOutput("plot_GObar")
                                                )
                                              ),
+                                             fluidRow(
+                                               column(3,
+                                                      downloadButton("bt_GOdownSummary", "Download Summary Table")
+                                               ),
+                                                column(3,
+                                                      selectInput("se_GOsummaryFormat", label = NA,
+                                                                  choices = c(`csv (US)` = "csv1",
+                                                                              `csv (EU/BR)` = "csv2"),
+                                                                  selected = "csv1")
+                                                ),
+                                               column(4,
+                                                      checkboxInput("cb_GOsummaryKeepCat", "Keep category tag (C:, F:, P:)"))
+                                             ),
                                              DT::dataTableOutput("dt_GOall")
                                     ),
                                     tabPanel("Extract IDs from table",
@@ -364,7 +377,10 @@ shinyUI(
                                 )
                               )),
                      tabPanel(HTML("iTraq Ratio Check</a></li><li><a href='http://lbqp.unb.br/NetWheels/' target = '_blank'>NetWheels")),
-                     tabPanel("About")
+                     tabPanel("About",
+                              tags$h4("These tools were developed by Alan R. Mól, Mariana S. Castro and Wagner Fontes, from the Laboratory
+                                      of Biochemistry and Protein Chemistry (LBQP) at the University of Brasília (UnB), Brazil. 
+                                      For more information, please visit http://lbqp.unb.br"))
           )
   )
 )
