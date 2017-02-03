@@ -36,7 +36,7 @@ shinyUI(
                               titlePanel("Fasta Tools"),
                               sidebarLayout(
                                 sidebarPanel(
-                                  fileInput('file_Fasta1', 'Choose FASTA file',
+                                  fileInput('file_FTFasta1', 'Choose FASTA file',
                                             accept = c('FASTA', 
                                                      '.fasta')),
                                   selectInput("seqtype", "Type of sequence", 
@@ -96,23 +96,43 @@ shinyUI(
                                              )
                                     ),
                                     tabPanel("Merge",
-                                             tags$br(),
-                                             fileInput('file_Fasta2', 'Choose FASTA file #2',
-                                                       accept = c('FASTA', 
-                                                                '.fasta')),
-                                             checkboxInput("cb_rmFastaDups", label = "Remove Redundancies",
-                                                           value = TRUE),
-                                             checkboxInput("cb_rmFastaRevs", label = "Remove Reverses",
-                                                           value = TRUE),
-                                             checkboxInput("cb_rmFastaConts", label = "Remove Contaminants",
-                                                           value = TRUE),
-                                             div(style = "display:inline-block;width:150px;",
-                                                 checkboxInput("cb_rmFastaTag", label = "Remove with tag:",
-                                                               value = FALSE)),
-                                             div(style = "display:inline-block;",
-                                                 tags$input(id = "tx_tagRemove", class = "input-small")),
-                                             tags$br(), tags$br(),
-                                             downloadButton("bt_doMerge", label = "Merge and save")
+                                             fluidRow(
+                                               column(6,
+                                                      tags$br(),
+                                                      fileInput('file_FTFasta2', 'Choose FASTA file #2',
+                                                                accept = c('FASTA', 
+                                                                           '.fasta')),
+                                                      uiOutput("hp_FTNumOfSeq2"),
+                                                      tags$hr(),
+                                                      checkboxInput("cb_FTmainfile", label = "Use this file as main file (If selected, the headers from this file will be kept in case of redundancies)",
+                                                                    value = FALSE),
+                                                      checkboxInput("cb_rmFastaDups", label = "Remove Redundancies",
+                                                                    value = TRUE),
+                                                      checkboxInput("cb_rmFastaRevs", label = "Remove Reverses (checked on header)",
+                                                                    value = TRUE),
+                                                      checkboxInput("cb_rmFastaConts", label = "Remove Contaminants",
+                                                                    value = TRUE),
+                                                      div(style = "display:inline-block;width:150px;",
+                                                          checkboxInput("cb_rmFastaTag", label = "Remove with tag:",
+                                                                        value = FALSE)),
+                                                      div(style = "display:inline-block;", class = "form-group shiny-input-container",
+                                                          tags$input(id = "tx_tagRemove", type = "text", class = "input-small")),
+                                                      tags$br(), tags$br(),
+                                                      actionButton("bt_FTdoMerge", label = "Merge"),
+                                                      downloadButton("bt_FTdownMerge", label = "Download Merged"),
+                                                      downloadButton("bt_FTdownDups", label = "Download Redundancies")
+                                               ),
+                                               column(6,
+                                                      tags$br(),
+                                                      tags$h4("Output summary"),
+                                                      tags$br(),
+                                                      uiOutput("hp_FTmergedSize"),
+                                                      uiOutput("hp_FTnDups"),
+                                                      uiOutput("hp_FTnRevs"),
+                                                      uiOutput("hp_FTnConts"),
+                                                      uiOutput("hp_FTnTagsr")
+                                               )
+                                             )
                                     )
                                   )
                                 )

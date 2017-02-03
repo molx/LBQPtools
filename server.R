@@ -7,66 +7,138 @@ shinyServer(function(input, output, session) {
   ##### FASTA TOOLS #####
   
   #inFile1 <- reactive(input$file_Fasta1)
-  #inFile2 <- reactive(input$file_Fasta2)
+  #inFile2 <- reactive(input$file_FTFasta2)
   
-  Fasta1 <- reactive(seqinr::read.fasta(input$file_Fasta1$datapath, seqtype = input$seqtype,
+  FT_Fasta1 <- reactive(seqinr::read.fasta(input$file_FTFasta1$datapath, seqtype = input$seqtype,
+                                        as.string = TRUE))
+  
+  FT_Fasta2 <- reactive(seqinr::read.fasta(input$file_FTFasta2$datapath, seqtype = input$seqtype,
                                         as.string = TRUE))
   
   output$hp_NumOfSeq <- renderUI({
     
-    if (is.null(input$file_Fasta1)) {
+    if (is.null(input$file_FTFasta1)) {
       helpText("Number of sequences:", style = "font-weight: bold; color: #000000;")
     } else {
-      sequences <- Fasta1()
+      sequences <- FT_Fasta1()
       helpText(paste("Number of sequences:", length(sequences)), style = "font-weight: bold; color: #000000;")
     }
   })
   
-  output$bt_doMerge <- downloadHandler(
-    filename = function() {
-      "MergedFasta.fasta"
-    },
-    content = function(file) {
-      f1 <- Fasta1() #seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
+  output$hp_FTNumOfSeq2 <- renderUI({
+    
+    if (is.null(input$file_FTFasta2)) {
+      helpText("Number of sequences:", style = "font-weight: bold; color: #000000;")
+    } else {
+      sequences <- FT_Fasta2()
+      helpText(paste("Number of sequences:", length(sequences)), style = "font-weight: bold; color: #000000;")
+    }
+  })
+  
+  mergedFasta <- eventReactive(input$bt_FTdoMerge, {
+    f1 <- FT_Fasta1() #seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
       #             as.string = TRUE)
       #f1 <- seqinr::read.fasta("WF1.fasta", seqtype = "AA",
       #as.string = TRUE)
-      
-      f2 <- seqinr::read.fasta(input$file_Fasta2$datapath, seqtype = input$seqtype,
-                               as.string = TRUE)
+
+      f2 <- FT_Fasta2()      
+      # f2 <- seqinr::read.fasta(input$file_FTFasta2$datapath, seqtype = input$seqtype,
+      #                          as.string = TRUE)
       #f2 <- seqinr::read.fasta("WF2.fasta", seqtype = "AA",
       #as.string = TRUE)
       
+      if (input$cb_FTmainfile) {
+        f3 <- f2
+        f2 <- f1
+        f1 <- f3
+        rm(f3)
+      }
+      
       headers <- clearHeader(seqinr::getAnnot(c(f1, f2)))
       
-      dups <- if (input$cb_rmFastaDups) {
-        duplicated(c(as.character(f1), as.character(f2)))
-      } else {
-        FALSE
-      }
+      n_dups <- duplicated(c(as.character(f1), as.character(f2)))
       
-      revs <- if (input$cb_rmFastaRevs) {
-        grepl("REVERSED", headers)
+      dups <- if (input$cb_rmFastaDups) {
+        n_dups
       } else {
         FALSE
       }
+
+      n_revs <- grepl("REVERSED", headers)
+        
+      revs <- if (input$cb_rmFastaRevs) {
+        n_revs 
+      } else {
+        FALSE
+      }
+
+      n_conts <- grepl("CONTAMINANT", headers)
       
       conts <- if (input$cb_rmFastaConts) {
-        grepl("CONTAMINANT", headers)
+        n_conts
       } else {
         FALSE
       }
-      
-      tagsr <- if (input$cb_rmFastaTag && (input$tx_tagRemove != "")) {
+      print(input$tx_tagRemove)
+      n_tagsr <- if (!is.null(input$tx_tagRemove) && input$tx_tagRemove != "") {
         grepl(input$tx_tagRemove, headers, fixed = TRUE)
       } else {
         FALSE
       }
       
+      tagsr <- if (input$cb_rmFastaTag) {
+        n_tagsr
+      } else {
+        FALSE
+      }
+
       unqs <- c(f1, f2)[!(dups | revs | conts | tagsr)]
-      
-      seqinr::write.fasta(sequences = unqs, 
-                          names = clearHeader(seqinr::getAnnot(unqs)),
+
+      return(list(unqs = unqs,
+                  dups = c(f1, f2)[dups],
+                  n_dups = sum(n_dups),
+                  n_revs = sum(n_revs),
+                  n_conts = sum(n_conts),
+                  n_tagsr = sum(n_tagsr)))
+
+  })
+  
+  observeEvent(input$bt_FTdoMerge, {
+    out <- mergedFasta()
+    output$hp_FTmergedSize = renderUI(helpText(paste(length(out$unqs), "sequences in final merged FASTA"), style = "font-weight: bold; color: #000000;"))
+    output$hp_FTnDups = renderUI(helpText(paste(out$n_dups, "duplicated sequences found"), style = "font-weight: bold; color: #000000;"))
+    output$hp_FTnRevs = renderUI(helpText(paste(out$n_revs, "reverse sequences found"), style = "font-weight: bold; color: #000000;"))
+    output$hp_FTnConts = renderUI(helpText(paste(out$n_conts, "contaminant sequences found"), style = "font-weight: bold; color: #000000;"))
+    output$hp_FTnTagsr = renderUI(helpText(paste(out$n_tagsr, "sequences found by tag"), style = "font-weight: bold; color: #000000;"))
+    
+    shinyjs::enable("bt_FTdownMerge")
+    shinyjs::enable("bt_FTdownDups")
+  })
+  
+  shinyjs::disable("bt_FTdownMerge")
+  shinyjs::disable("bt_FTdownDups")
+  
+  output$bt_FTdownMerge <- downloadHandler(
+    filename = function() {
+      "MergedFasta.fasta"
+    },
+    content = function(file) {
+      out <- mergedFasta()$unqs
+      seqinr::write.fasta(sequences = out, 
+                          names = clearHeader(seqinr::getAnnot(out)),
+                          file.out = file,
+                          as.string = TRUE)
+    }
+  )
+  
+  output$bt_FTdownDups <- downloadHandler(
+    filename = function() {
+      "RedudanciesFasta.fasta"
+    },
+    content = function(file) {
+      out <- mergedFasta()$dups
+      seqinr::write.fasta(sequences = out, 
+                          names = clearHeader(seqinr::getAnnot(out)),
                           file.out = file,
                           as.string = TRUE)
     }
@@ -81,7 +153,7 @@ shinyServer(function(input, output, session) {
              sequences = "FilteredSequences.txt")
     },
     content = function(file) {
-      fastaIn <- Fasta1()#seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
+      fastaIn <- FT_Fasta1()#seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
       #      as.string = TRUE)
       
       # fastaIn <- seqinr::read.fasta("2seqFasta.fasta", seqtype = "AA",
