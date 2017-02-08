@@ -79,7 +79,7 @@ shinyServer(function(input, output, session) {
       } else {
         FALSE
       }
-      print(input$tx_tagRemove)
+      
       n_tagsr <- if (!is.null(input$tx_tagRemove) && input$tx_tagRemove != "") {
         grepl(input$tx_tagRemove, headers, fixed = TRUE)
       } else {
@@ -571,12 +571,11 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
   ETReffile <- reactive({
     if (input$rb_ETrefStyle == "other" && !is.null(input$file_ETRef$datapath)) {
       out <- switch(input$se_ETfileTypeRef,
-                  tsv = readr::read_tsv(input$file_ETRef$datapath),
-                  csv1 = readr::read_csv(input$file_ETRef$datapath),
-                  csv2 = readr::read_csv2(input$file_ETRef$datapath))
-    
-    updateSelectInput(session, "se_ETcolRef", choices = c("Select one", colnames(out)))
-    return(out)
+                    tsv = readr::read_tsv(input$file_ETRef$datapath),
+                    csv1 = readr::read_csv(input$file_ETRef$datapath),
+                    csv2 = readr::read_csv2(input$file_ETRef$datapath))
+      updateSelectInput(session, "se_ETcolRef", choices = c("Select one", colnames(out)))
+      return(out)
     } else if (input$rb_ETrefStyle == "same") {
       ETmainfile()
     } else {
@@ -629,13 +628,15 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
     } else {
       is.na(ETmainfile()[[input$se_ETcol]]) | is.na(ETmainfile()[[input$se_ETcountCol]])
     }
-    
-    NAsRef <- if (input$rb_ETcountedDataRef == "count") {
+
+    NAsRef <- if (input$rb_ETrefStyle == "same") {
+      NAs
+    } else if (input$rb_ETcountedDataRef == "count") {
       is.na(ETReffile()[[input$se_ETcolRef]])
     } else {
       is.na(ETReffile()[[input$se_ETcolRef]]) | is.na(ETReffile()[[input$se_ETcountColRef]])
     }
-    
+
     vec <- as.character(ETmainfile()[[input$se_ETcol]][!NAs])
     
     if (input$rb_ETsep == "mult") {
@@ -651,70 +652,81 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
     if (input$rb_ETsepRef == "mult") {
       vecRef <- unlist(strsplit(vecRef, split = input$tx_ETsepRef, fixed = TRUE))
     } 
-    
+
     # Keep only the main IDs that appear on Reference
     foundOnRef <- vec %in% unique(vecRef) 
     vec <- vec[foundOnRef]
 
     foundOnRef_Ref <- vecRef %in% unique(vec)
-    vecRef <- vecRef[foundOnRef_Ref]
-
-    if (is.null(vec)) {
-      message("Returning NULL")
-      return(NULL)
-    }
-
-    nIDs <- length(unique(vec))
     
-    prog.interval <- seq(0, nIDs, length.out = 100)
-    
-    tab <- if (input$rb_ETcountedData == "count") {
-      unlist(table(vec))
-    } else {
-      dups <- duplicated(vec)
-      setNames(ETmainfile()[[input$se_ETcountCol]][!NAs][foundOnRef],
-               vec)[!dups]
-    }
-    
-    tabRef <- if (input$rb_ETcountedDataRef == "count") {
-      unlist(table(vecRef))
-    } else {
-      dups <- duplicated(vecRef)
-      setNames(ETReffile()[[input$se_ETcountColRef]][!NAsRef][foundOnRef_Ref],
-               vecRef)[!dups]
-    }
-
-    withProgress(message = "Performing tests", value = 0,
-                 {
-                   Fisher <- lapply(seq_along(unique(vec)), function(ID) {
-                     target <- vec[ID]
-                     
-                     target_exp <- tab[target]
-                     target_ref <- tabRef[target]
-                     
-                     rest_exp <- sum(tab) - target_exp
-                     rest_ref <- sum(tabRef) - target_ref
-                     
-                     mat <- matrix(c(target_exp, target_ref, rest_exp, rest_ref), ncol = 2)
-                     
-                     f <- fisher.test(mat, alternative = "greater")
-                     
-                     setProgress(findInterval(ID, prog.interval)/100,
-                                 detail = paste(ID, "out of", nIDs))
-                     
-                     data.frame(ID = target, p.value = f$p.value)
+    if (sum(foundOnRef_Ref) > 0) { #If there are no matches, avoid DT error and gives warning
+      output$ET_noMatchWarn <- renderUI(tags$h4(""));
+      vecRef <- vecRef[foundOnRef_Ref]
+      
+      if (is.null(vec)) {
+        message("Returning NULL")
+        return(NULL)
+      }
+      
+      nIDs <- length(unique(vec))
+      
+      prog.interval <- seq(0, nIDs, length.out = 100)
+      
+      tab <- if (input$rb_ETcountedData == "count") {
+        unlist(table(vec))
+      } else {
+        dups <- duplicated(vec)
+        setNames(ETmainfile()[[input$se_ETcountCol]][!NAs][foundOnRef],
+                 vec)[!dups]
+      }
+      
+      tabRef <- if (input$rb_ETcountedDataRef == "count") {
+        unlist(table(vecRef))
+      } else {
+        dups <- duplicated(vecRef)
+        setNames(ETReffile()[[input$se_ETcountColRef]][!NAsRef][foundOnRef_Ref],
+                 vecRef)[!dups]
+      }
+      
+      withProgress(message = "Performing tests", value = 0,
+                   {
+                     Fisher <- lapply(seq_along(unique(vec)), function(ID) {
+                       target <- vec[ID]
+                       
+                       target_exp <- tab[target]
+                       target_ref <- tabRef[target]
+                       
+                       rest_exp <- sum(tab) - target_exp
+                       rest_ref <- sum(tabRef) - target_ref
+                       
+                       mat <- matrix(c(target_exp, target_ref, rest_exp, rest_ref), ncol = 2)
+                       
+                       f <- fisher.test(mat, alternative = "greater")
+                       
+                       setProgress(findInterval(ID, prog.interval)/100,
+                                   detail = paste(ID, "out of", nIDs))
+                       
+                       data.frame(ID = target, p.value = f$p.value)
+                     })
                    })
-                 })
+      
+      out <- do.call(rbind, Fisher)
+      out$q.value <- p.adjust(out$p.value, method = "fdr")
+      out$TargetCount <- as.numeric(tab) #Remove table class to avoid DT bug in v 2.0
+      out$RefCount <- as.numeric(tabRef)
+      out$TargetRatio <- out$TargetCount/sum(out$TargetCount)
+      out$RefRatio <- out$RefCount/sum(out$RefCount)
+      out$ExpectedByChance <- out$RefRatio*sum(out$TargetCount)
+      out$OverRepresentation <- out$TargetCount/out$ExpectedByChance
+      out
+    } else {
+      out <- data.frame(ID = 0, p.value = 0, q.value = 0, TargetCount = 0, RefCount = 0, 
+                        TargetRatio = 0, RefRatio = 0, ExpectedByChance = 0, OverRepresentation = 0)
+      output$ET_noMatchWarn <- renderUI(tags$h4("No match between IDs found. Please make sure both sets are in the same format. For example, 
+                                      trying to match 'F:GO:1234567' against 'GO:1234567 [description]' will NOT work."))
+      out
+    }
     
-    out <- do.call(rbind, Fisher)
-    out$q.value <- p.adjust(out$p.value, method = "fdr")
-    out$TargetCount <- as.numeric(tab) #Remove table class to avoid DT bug in v 2.0
-    out$RefCount <- as.numeric(tabRef)
-    out$TargetRatio <- out$TargetCount/sum(out$TargetCount)
-    out$RefRatio <- out$RefCount/sum(out$RefCount)
-    out$ExpectedByChance <- out$RefRatio*sum(out$TargetCount)
-    out$OverRepresentation <- out$TargetCount/out$ExpectedByChance
-    out
     
   })
   
@@ -749,8 +761,6 @@ with optional 'C:', 'F:' or P:' tags at the beggining.",
       "Enrichment_Test.csv"
     },
     content = function(file) {
-      print(colnames(ETFisherOut()))
-      print(input$cb_ET)
       out <- ETFisherOut()[,gsub("cb_ET", "", input$cb_ET)]
       switch(input$se_ETGOstatFormat,
              csv1 = write.csv(x = out, file = file, row.names = FALSE),
@@ -803,9 +813,9 @@ filter.fasta <- function(sequences, headers, headersType, headersMatchType,
                             idexact = names(sequences) %in% headersText,
                             fullpartial = grepl(headersPattern, seqinr::getAnnot(sequences)),
                             fullexact = seqinr::getAnnot(sequences) %in% headersText)
-    print(headersPattern)
-    print(names(sequences))
-    print(headerMatches)
+    
+    
+    
     #names(sequences) %in% headersText
     xor(headerMatches, !(headersType == "keep"))
   } else TRUE

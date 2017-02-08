@@ -370,7 +370,9 @@ shinyUI(
                                              ),
                                              uiOutput("ET_colsCB", inline = TRUE),
                                              tags$br(),
-                                             DT::dataTableOutput("tb_ETstat")),
+                                             uiOutput("ET_noMatchWarn"),
+                                             DT::dataTableOutput("tb_ETstat")
+                                    ),
                                     tabPanel("Instructions",
                                              htmlOutput("vb_EThelp"))
                                   )
