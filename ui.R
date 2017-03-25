@@ -36,17 +36,25 @@ shinyUI(
                               titlePanel("Fasta Tools"),
                               sidebarLayout(
                                 sidebarPanel(
-                                  fileInput('file_FTFasta1', 'Choose FASTA file',
+                                  fileInput('file_FTFasta1', 'Choose main FASTA file',
                                             accept = c('FASTA', 
                                                      '.fasta')),
-                                  selectInput("seqtype", "Type of sequence", 
+                                  selectInput("seqtype", "Type of sequences", 
                                               choices = c(Aminoacids = "AA", Nucleotides = "DNA"), selected = "AA"),
-                                  uiOutput("hp_NumOfSeq")
+                                  uiOutput("hp_NumOfSeq"),
+                                  tags$hr(),
+                                  fileInput('file_FTFasta2', 'Choose secondary FASTA file',
+                                            accept = c('FASTA', 
+                                                       '.fasta')),
+                                  uiOutput("hp_FTNumOfSeq2"),
+                                  checkboxInput("cb_FTmainfile", label = "Use this file as main file (If selected, the headers from this file will be kept in case of redundancies)",
+                                                value = FALSE)
                                 ),
                                 mainPanel(
                                   tabsetPanel(
                                     tabPanel("Filters",
                                              tags$br(),
+                                             helpText("The filter is applied only on the main fasta file"),
                                              fluidRow(
                                                column(3,
                                                       radioButtons("FT_rb_headerListType", label = NA, 
@@ -95,17 +103,13 @@ shinyUI(
                                                       )
                                              )
                                     ),
-                                    tabPanel("Merge",
+                                    tabPanel("Compare and Merge",
                                              fluidRow(
                                                column(6,
                                                       tags$br(),
-                                                      fileInput('file_FTFasta2', 'Choose FASTA file #2',
-                                                                accept = c('FASTA', 
-                                                                           '.fasta')),
-                                                      uiOutput("hp_FTNumOfSeq2"),
-                                                      tags$hr(),
-                                                      checkboxInput("cb_FTmainfile", label = "Use this file as main file (If selected, the headers from this file will be kept in case of redundancies)",
-                                                                    value = FALSE),
+                                                      radioButtons("FT_rd_compType", label = "Compare using:",
+                                                                   choices = c("Sequences" = "seqs", "Headers" = "headers"),
+                                                                   inline = TRUE),
                                                       checkboxInput("cb_rmFastaDups", label = "Remove Redundancies",
                                                                     value = TRUE),
                                                       checkboxInput("cb_rmFastaRevs", label = "Remove Reverses (checked on header)",
@@ -118,7 +122,7 @@ shinyUI(
                                                       div(style = "display:inline-block;", class = "form-group shiny-input-container",
                                                           tags$input(id = "tx_tagRemove", type = "text", class = "input-small")),
                                                       tags$br(), tags$br(),
-                                                      actionButton("bt_FTdoMerge", label = "Merge"),
+                                                      actionButton("bt_FTdoMerge", label = "Compare"),
                                                       downloadButton("bt_FTdownMerge", label = "Download Merged"),
                                                       downloadButton("bt_FTdownDups", label = "Download Redundancies")
                                                ),
@@ -130,7 +134,8 @@ shinyUI(
                                                       uiOutput("hp_FTnDups"),
                                                       uiOutput("hp_FTnRevs"),
                                                       uiOutput("hp_FTnConts"),
-                                                      uiOutput("hp_FTnTagsr")
+                                                      uiOutput("hp_FTnTagsr"),
+                                                      plotOutput("FT_plot_Venn")
                                                )
                                              )
                                     )

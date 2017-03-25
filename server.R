@@ -1,6 +1,7 @@
 library(shiny)
 #library(seqinr)
 
+
 # Define server logic required to draw a histogram
 shinyServer(function(input, output, session) {
   
@@ -37,79 +38,108 @@ shinyServer(function(input, output, session) {
   
   mergedFasta <- eventReactive(input$bt_FTdoMerge, {
     f1 <- FT_Fasta1() #seqinr::read.fasta(inFile1()$datapath, seqtype = input$seqtype,
-      #             as.string = TRUE)
-      #f1 <- seqinr::read.fasta("WF1.fasta", seqtype = "AA",
-      #as.string = TRUE)
-
-      f2 <- FT_Fasta2()      
-      # f2 <- seqinr::read.fasta(input$file_FTFasta2$datapath, seqtype = input$seqtype,
-      #                          as.string = TRUE)
-      #f2 <- seqinr::read.fasta("WF2.fasta", seqtype = "AA",
-      #as.string = TRUE)
+    #             as.string = TRUE)
+    #f1 <- seqinr::read.fasta("WF1.fasta", seqtype = "AA",
+    #as.string = TRUE)
+    
+    f2 <- FT_Fasta2()      
+    # f2 <- seqinr::read.fasta(input$file_FTFasta2$datapath, seqtype = input$seqtype,
+    #                          as.string = TRUE)
+    #f2 <- seqinr::read.fasta("WF2.fasta", seqtype = "AA",
+    #as.string = TRUE)
+    
+    if (input$cb_FTmainfile) {
+      f3 <- f2
+      f2 <- f1
+      f1 <- f3
+      rm(f3)
+    }
+    
+    headers <- clearHeader(seqinr::getAnnot(c(f1, f2)))
+    
+    if (input$FT_rd_compType == "seqs") {
+      target1 <- as.character(f1)
+      target2 <- as.character(f2)
+    } else {
+      target1 <- seqinr::getAnnot(f1)
+      target2 <- seqinr::getAnnot(f2)
+    }
+    
+    n_dups <- duplicated(c(target1, target2))
+    
+    dups <- if (input$cb_rmFastaDups) {
+      n_dups
+    } else {
+      FALSE
+    }
+    
+    n_revs <- grepl("REVERSED", headers)
+    
+    revs <- if (input$cb_rmFastaRevs) {
+      n_revs 
+    } else {
+      FALSE
+    }
+    
+    n_conts <- grepl("CONTAMINANT", headers)
+    
+    conts <- if (input$cb_rmFastaConts) {
+      n_conts
+    } else {
+      FALSE
+    }
+    
+    n_tagsr <- if (!is.null(input$tx_tagRemove) && input$tx_tagRemove != "") {
+      grepl(input$tx_tagRemove, headers, fixed = TRUE)
+    } else {
+      FALSE
+    }
+    
+    tagsr <- if (input$cb_rmFastaTag) {
+      n_tagsr
+    } else {
+      FALSE
+    }
+    
+    unqs <- c(f1, f2)[!(dups | revs | conts | tagsr)]
+    
+    countMain <- length(setdiff(target1, target2))
+    countSec <- length(setdiff(target2, target1))
+    countInter <- length(intersect(target1, target2))
+    
+    output$FT_plot_Venn <- renderPlot({
+      par(mar = c(0, 0, 0, 0) + .1)
+      symbols(x = c(3, 5.5), y = c(2.3, 2.3), circles = c(2, 2),
+              xlim = c(1, 7.5), ylim = c(1, 3.5),
+              xaxs = "i", yaxs = "i", inches = FALSE,
+              xaxt = "n", yaxt = "n", bty = "n",
+              xlab = "", ylab = "")
       
-      if (input$cb_FTmainfile) {
-        f3 <- f2
-        f2 <- f1
-        f1 <- f3
-        rm(f3)
-      }
+      text(x = c(2.3, 6.2), y = c(2.3, 2.3), labels = c(countMain, countSec),
+           cex = 1.2)
       
-      headers <- clearHeader(seqinr::getAnnot(c(f1, f2)))
+      text(x = 4.25, y = 2.3, labels = countInter, adj = 0.5, cex = 1.2)
       
-      n_dups <- duplicated(c(as.character(f1), as.character(f2)))
-      
-      dups <- if (input$cb_rmFastaDups) {
-        n_dups
-      } else {
-        FALSE
-      }
-
-      n_revs <- grepl("REVERSED", headers)
-        
-      revs <- if (input$cb_rmFastaRevs) {
-        n_revs 
-      } else {
-        FALSE
-      }
-
-      n_conts <- grepl("CONTAMINANT", headers)
-      
-      conts <- if (input$cb_rmFastaConts) {
-        n_conts
-      } else {
-        FALSE
-      }
-      
-      n_tagsr <- if (!is.null(input$tx_tagRemove) && input$tx_tagRemove != "") {
-        grepl(input$tx_tagRemove, headers, fixed = TRUE)
-      } else {
-        FALSE
-      }
-      
-      tagsr <- if (input$cb_rmFastaTag) {
-        n_tagsr
-      } else {
-        FALSE
-      }
-
-      unqs <- c(f1, f2)[!(dups | revs | conts | tagsr)]
-
-      return(list(unqs = unqs,
-                  dups = c(f1, f2)[dups],
-                  n_dups = sum(n_dups),
-                  n_revs = sum(n_revs),
-                  n_conts = sum(n_conts),
-                  n_tagsr = sum(n_tagsr)))
-
+      text(x = c(3, 5.5), y = c(3.4, 3.4), labels = c("Main", "Secondary"),
+           cex = 1.4)
+    }, width = 500)
+    
+    return(list(unqs = unqs,
+                dups = c(f1, f2)[dups],
+                n_dups = sum(n_dups),
+                n_revs = sum(n_revs),
+                n_conts = sum(n_conts),
+                n_tagsr = sum(n_tagsr)))
+    
   })
   
   observeEvent(input$bt_FTdoMerge, {
     out <- mergedFasta()
-    output$hp_FTmergedSize = renderUI(helpText(paste(length(out$unqs), "sequences in final merged FASTA"), style = "font-weight: bold; color: #000000;"))
-    output$hp_FTnDups = renderUI(helpText(paste(out$n_dups, "duplicated sequences found"), style = "font-weight: bold; color: #000000;"))
-    output$hp_FTnRevs = renderUI(helpText(paste(out$n_revs, "reverse sequences found"), style = "font-weight: bold; color: #000000;"))
-    output$hp_FTnConts = renderUI(helpText(paste(out$n_conts, "contaminant sequences found"), style = "font-weight: bold; color: #000000;"))
-    output$hp_FTnTagsr = renderUI(helpText(paste(out$n_tagsr, "sequences found by tag"), style = "font-weight: bold; color: #000000;"))
+    output$hp_FTmergedSize = renderUI(helpText(paste(length(out$unqs), "entries in final merged FASTA"), style = "font-weight: bold; color: #000000;"))
+    output$hp_FTnDups = renderUI(helpText(paste(out$n_dups, "duplicated entries found"), style = "font-weight: bold; color: #000000;"))
+    output$hp_FTnRevs = renderUI(helpText(paste(out$n_revs, "reverse entries found"), style = "font-weight: bold; color: #000000;"))
+    output$hp_FTnConts = renderUI(helpText(paste(out$n_conts, "contaminant entries found"), style = "font-weight: bold; color: #000000;"))
+    output$hp_FTnTagsr = renderUI(helpText(paste(out$n_tagsr, "entries found by tag"), style = "font-weight: bold; color: #000000;"))
     
     shinyjs::enable("bt_FTdownMerge")
     shinyjs::enable("bt_FTdownDups")
