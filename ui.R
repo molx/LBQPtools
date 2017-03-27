@@ -123,8 +123,14 @@ shinyUI(
                                                           tags$input(id = "tx_tagRemove", type = "text", class = "input-small")),
                                                       tags$br(), tags$br(),
                                                       actionButton("bt_FTdoMerge", label = "Compare"),
-                                                      downloadButton("bt_FTdownMerge", label = "Download Merged"),
-                                                      downloadButton("bt_FTdownDups", label = "Download Redundancies")
+                                                      downloadButton("bt_FTdownMerge", label = "Merged"),
+                                                      downloadButton("bt_FTdownDups", label = "Intersection"),
+                                                      downloadButton("bt_FTdownMain", label = "Main file exclusives"),
+                                                      downloadButton("bt_FTdownSec", label = "Secondary file exclusives"),
+                                                      radioButtons("rd_FT_viewType", label = "View list of:",
+                                                                   choices = c("All" = "all", "Intersection" = "inter",
+                                                                               "Main file" = "main", "Secondary file" = "sec"),
+                                                                   inline = TRUE)
                                                ),
                                                column(6,
                                                       tags$br(),
@@ -135,9 +141,10 @@ shinyUI(
                                                       uiOutput("hp_FTnRevs"),
                                                       uiOutput("hp_FTnConts"),
                                                       uiOutput("hp_FTnTagsr"),
-                                                      plotOutput("FT_plot_Venn")
+                                                      plotOutput("FT_plot_Venn", height = "300px")
                                                )
-                                             )
+                                             ),
+                                             DT::dataTableOutput("dt_FT_venn")
                                     )
                                   )
                                 )

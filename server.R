@@ -103,9 +103,13 @@ shinyServer(function(input, output, session) {
     
     unqs <- c(f1, f2)[!(dups | revs | conts | tagsr)]
     
-    countMain <- length(setdiff(target1, target2))
-    countSec <- length(setdiff(target2, target1))
-    countInter <- length(intersect(target1, target2))
+    Maindiff <- setdiff(target1, target2)
+    Secdiff <- setdiff(target2, target1)
+    Inter <- intersect(target1, target2)
+    
+    countMain <- length(Maindiff)
+    countSec <- length(Secdiff)
+    countInter <- length(Inter)
     
     output$FT_plot_Venn <- renderPlot({
       par(mar = c(0, 0, 0, 0) + .1)
@@ -122,10 +126,26 @@ shinyServer(function(input, output, session) {
       
       text(x = c(3, 5.5), y = c(3.4, 3.4), labels = c("Main", "Secondary"),
            cex = 1.4)
-    }, width = 500)
+    }, width = 400, height = 300)
+    
+    targets <- c(target1, target2)
+    
+    headers_df <- data.frame(Header = headers,
+                             InMain = targets %in% Maindiff,
+                             InSec = targets %in% Secdiff)
+    headers_df$InBoth = (targets %in% Inter) & (headers %in% clearHeader(seqinr::getAnnot(f1, f2)))
+    
+    output$dt_FT_venn <- DT::renderDataTable(switch(input$rd_FT_viewType, 
+                                                    all = headers_df,
+                                                    main = headers_df[headers_df$InMain,],
+                                                    sec = headers_df[headers_df$InSec,],
+                                                    inter = headers_df[headers_df$InBoth,])[ ,1, FALSE],
+                                             rownames = FALSE)
     
     return(list(unqs = unqs,
                 dups = c(f1, f2)[dups],
+                main = c(f1, f2)[targets %in% Maindiff],
+                sec  = c(f1, f2)[targets %in% Secdiff],
                 n_dups = sum(n_dups),
                 n_revs = sum(n_revs),
                 n_conts = sum(n_conts),
@@ -143,10 +163,16 @@ shinyServer(function(input, output, session) {
     
     shinyjs::enable("bt_FTdownMerge")
     shinyjs::enable("bt_FTdownDups")
+    shinyjs::enable("bt_FTdownMain")
+    shinyjs::enable("bt_FTdownSec")
+    shinyjs::enable("bt_FTdownInter")
   })
   
   shinyjs::disable("bt_FTdownMerge")
   shinyjs::disable("bt_FTdownDups")
+  shinyjs::disable("bt_FTdownMain")
+  shinyjs::disable("bt_FTdownSec")
+  shinyjs::disable("bt_FTdownInter")
   
   output$bt_FTdownMerge <- downloadHandler(
     filename = function() {
@@ -163,10 +189,36 @@ shinyServer(function(input, output, session) {
   
   output$bt_FTdownDups <- downloadHandler(
     filename = function() {
-      "RedudanciesFasta.fasta"
+      "IntersectionFasta.fasta"
     },
     content = function(file) {
       out <- mergedFasta()$dups
+      seqinr::write.fasta(sequences = out, 
+                          names = clearHeader(seqinr::getAnnot(out)),
+                          file.out = file,
+                          as.string = TRUE)
+    }
+  )
+  
+  output$bt_FTdownMain <- downloadHandler(
+    filename = function() {
+      "MainExclusiveFasta.fasta"
+    },
+    content = function(file) {
+      out <- mergedFasta()$main
+      seqinr::write.fasta(sequences = out, 
+                          names = clearHeader(seqinr::getAnnot(out)),
+                          file.out = file,
+                          as.string = TRUE)
+    }
+  )
+  
+  output$bt_FTdownSec <- downloadHandler(
+    filename = function() {
+      "SecondaryExclusiveFasta.fasta"
+    },
+    content = function(file) {
+      out <- mergedFasta()$sec
       seqinr::write.fasta(sequences = out, 
                           names = clearHeader(seqinr::getAnnot(out)),
                           file.out = file,
