@@ -174,6 +174,16 @@ shinyServer(function(input, output, session) {
   shinyjs::disable("bt_FTdownSec")
   shinyjs::disable("bt_FTdownInter")
   
+  shinyjs::disable("FT_tx_validChars")
+  
+  observeEvent(input$FT_cb_removeInvalid, {
+    if (input$FT_cb_removeInvalid == TRUE) {
+      shinyjs::enable("FT_tx_validChars")
+    } else {
+      shinyjs::disable("FT_tx_validChars")
+    }
+  })
+  
   output$bt_FTdownMerge <- downloadHandler(
     filename = function() {
       "MergedFasta.fasta"
@@ -245,7 +255,9 @@ shinyServer(function(input, output, session) {
                           headers = input$fileHeaderFilter,
                           headersType = input$FT_rb_headerListType,
                           headersMatchType = input$FT_rb_headerListMatchType,
-                          minRes = input$minSeqFilter, maxRes = input$maxSeqFilter)
+                          minRes = input$minSeqFilter, maxRes = input$maxSeqFilter,
+                          removeInvalid = input$FT_cb_removeInvalid,
+                          valids = input$FT_tx_validChars)
       switch(input$FT_se_exportType,
              fasta = seqinr::write.fasta(sequences = out, 
                                          names = clearHeader(seqinr::getAnnot(out)),
@@ -878,8 +890,10 @@ write.oneseq <- function(pep, name, nbchar = 60) {
   paste0(start, aas)
 }
 
+#stdAminoacids <- c("A", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "V", "W", "Y")
+
 filter.fasta <- function(sequences, headers, headersType, headersMatchType,
-                         minRes, maxRes) {
+                         minRes, maxRes, removeInvalid, valids) {
   nRes <- sapply(sequences, nchar)
   minResTF <- if (!is.na(minRes) && minRes > 0) {
     nRes >= minRes
@@ -887,6 +901,14 @@ filter.fasta <- function(sequences, headers, headersType, headersMatchType,
   maxResTF <- if (!is.na(maxRes) && maxRes > 0) {
     nRes <= maxRes
   } else TRUE
+  
+  validAAs <- unique(strsplit(valids, "")[[1]])
+  
+  invalidTF <- if (removeInvalid) {
+    sapply(sequences, function(aa) all(strsplit(aa, "")[[1]] %in% validAAs))
+    #Splits sequecnes in characters, checks if all of them are in the standard aminoacids list
+  } else TRUE
+  
   headersTF <- if (!is.null(headers)) {
     headersText <- readLines(headers$datapath)
     headersPattern <- paste(headersText, collapse = "|")
@@ -901,7 +923,7 @@ filter.fasta <- function(sequences, headers, headersType, headersMatchType,
     #names(sequences) %in% headersText
     xor(headerMatches, !(headersType == "keep"))
   } else TRUE
-  filtered <- sequences[minResTF & maxResTF & headersTF]
+  filtered <- sequences[minResTF & maxResTF & headersTF & invalidTF]
   return(filtered)
 }
 

@@ -75,6 +75,14 @@ shinyUI(
                                              ),
                                              #actionButton("bt_resetHeaderList", label = "Reset"),
                                              fluidRow(
+                                               column(3,
+                                                      checkboxInput("FT_cb_removeInvalid", "Remove Invalid Sequences")
+                                                      ),
+                                               column(9,
+                                                      textInput("FT_tx_validChars", "Valid characters:", value = "ACDEFGHIKLMNPQRSTVWY")
+                                                      )
+                                             ),
+                                             fluidRow(
                                                column(2, 
                                                       helpText("Sequence Length (set 0 to disable)")
                                                ),
