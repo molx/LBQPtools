@@ -1,6 +1,7 @@
 library(shiny)
 #library(seqinr)
 
+options(shiny.maxRequestSize=30*1024^2) #Max 30 MB upload
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output, session) {
