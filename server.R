@@ -912,7 +912,7 @@ filter.fasta <- function(sequences, headers, headersType, headersMatchType,
   
   headersTF <- if (!is.null(headers)) {
     headersText <- readLines(headers$datapath)
-    headersPattern <- paste(headersText, collapse = "|")
+    headersPattern <- paste(escapeRegex(headersText), collapse = "|")
     headerMatches <- switch(headersMatchType, 
                             idpartial = grepl(headersPattern, names(sequences)),
                             idexact = names(sequences) %in% headersText,
@@ -926,6 +926,15 @@ filter.fasta <- function(sequences, headers, headersType, headersMatchType,
   } else TRUE
   filtered <- sequences[minResTF & maxResTF & headersTF & invalidTF]
   return(filtered)
+}
+
+escapeRegex <- function(input) {
+  special <- c("|", ".", "[", "]", "(", ")", "^", "$", "?", "*", "+")
+  out <- input
+  for (i in seq_along(special)) {
+    out <- gsub(special[i], paste0("\\", special[i]), out, fixed = TRUE)
+  }
+  return(out);
 }
 
 extract.go <- function(GOvec, type = c("all", "C", "F", "P"),
