@@ -1,9 +1,7 @@
 library(shiny)
-#library(shinyjs)
 
 subtitlesStyle <- "font-weight: bold; color: #000000;"
 
-# Define UI for application that draws a histogram
 shinyUI(
   tagList(shinyjs::useShinyjs(),
           tags$head(
@@ -57,16 +55,17 @@ shinyUI(
                                              helpText("The filter is applied only on the main fasta file"),
                                              fluidRow(
                                                column(3,
-                                                      radioButtons("FT_rb_headerListType", label = NA, 
-                                                                   choices = c(`Keep only headers in file` = "keep",
-                                                                               `Remove all headers in fle` = "remove"),
-                                                                   selected = "keep")),
-                                               column(4,
+                                                      helpText("*.txt file with one header per line without '>'"),
                                                       fileInput('fileHeaderFilter', 'Choose Header list file',
                                                                 accept = ('.txt'))),
-                                               column(5,
-                                                      div(class = "multcol",
-                                                          radioButtons("FT_rb_headerListMatchType", label = NA,
+                                               column(3,
+                                                      radioButtons("FT_rb_headerListType", label = "Keep/Remove headers", 
+                                                                   choices = c(`Keep entries present headers file` = "keep",
+                                                                               `Remove entries present in headers file` = "remove"),
+                                                                   selected = "keep")),
+                                               column(6,
+                                                      div(class = "",
+                                                          radioButtons("FT_rb_headerListMatchType", label = "Header Filtering Method",
                                                                        choices = c(`ID only - partial` = "idpartial",
                                                                                    `ID only - exact` = "idexact",
                                                                                    `Full header - partial` = "fullpartial",
@@ -100,7 +99,7 @@ shinyUI(
                                              tags$br(),
                                              fluidRow(
                                                column(3,
-                                                      selectInput("FT_se_exportType", label = NA,
+                                                      selectInput("FT_se_exportType", label = NULL,
                                                                   choices = c(`Export as Fasta file` = "fasta",
                                                                               `Export only IDs` = "ids",
                                                                               `Export only headers` = "headers",
@@ -204,7 +203,7 @@ shinyUI(
                                                       downloadButton("bt_GOdownSummary", "Download Summary Table")
                                                ),
                                                 column(3,
-                                                      selectInput("se_GOsummaryFormat", label = NA,
+                                                      selectInput("se_GOsummaryFormat", label = NULL,
                                                                   choices = c(`csv (US)` = "csv1",
                                                                               `csv (EU/BR)` = "csv2"),
                                                                   selected = "csv1")
@@ -274,7 +273,7 @@ shinyUI(
                                   )
                                 )
                               )),
-                     tabPanel("Enrichment Tester",
+                     tabPanel(HTML("Enrichment Tester</a></li><li><a href='http://lbqp.unb.br/NetWheels/' target = '_blank'>NetWheels"),
                               titlePanel("Enrichment Tester"),
                               sidebarLayout(
                                 sidebarPanel(
@@ -398,7 +397,7 @@ shinyUI(
                                   )
                                 )
                               )),
-                     tabPanel(HTML("iTraq Ratio Check</a></li><li><a href='http://lbqp.unb.br/NetWheels/' target = '_blank'>NetWheels")),
+                     #tabPanel(HTML("iTraq Ratio Check</a></li><li><a href='http://lbqp.unb.br/NetWheels/' target = '_blank'>NetWheels")),
                      tabPanel("About",
                               tags$h4("These tools were developed by Alan R. Mól, Mariana S. Castro and Wagner Fontes, from the Laboratory
                                       of Biochemistry and Protein Chemistry (LBQP) at the University of Brasília (UnB), Brazil. 
